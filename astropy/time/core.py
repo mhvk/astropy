@@ -387,6 +387,19 @@ class Time(object):
         """Time values in current format as a numpy array"""
         return self._time.value
 
+    def _get_gmst(self, precession_model='gmst06'):
+        precession_model = getattr(erfa_time, precession_model.lower())
+
+        from ..coordinates import Longitude
+        from ..units import radian, hourangle
+
+        gmst = precession_model(self.ut1.jd1, self.ut1.jd2,
+                                self.tt.jd1, self.tt.jd2) * radian
+
+        return Longitude(gmst, hourangle)
+
+    gmst = property(_get_gmst)
+
     def copy(self, format=None):
         """
         Return a fully independent copy the Time object, optionally changing
