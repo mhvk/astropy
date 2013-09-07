@@ -60,6 +60,30 @@ MULTI_HOPS = {('tai', 'tcb'): ('tt', 'tdb'),
               ('tt', 'utc'): ('tai',),
               }
 
+PRECESSION_MODELS = {
+    'IAU2006': {'function': erfa_time.gmst06, 'scales': ('ut1', 'tt')},
+    'IAU2000': {'function': erfa_time.gmst00, 'scales': ('ut1', 'tt')},
+    'IAU1982': {'function': erfa_time.gmst82, 'scales': ('ut1',)}}
+
+PRECESSION_NUTATION_MODELS = {
+    'IAU2006A': {'function': erfa_time.gst06a, 'scales': ('ut1', 'tt')},
+    'IAU2000A': {'function': erfa_time.gst00a, 'scales': ('ut1', 'tt')},
+    'IAU2000B': {'function': erfa_time.gst00b, 'scales': ('ut1',)},
+    'IAU1994': {'function': erfa_time.gst94, 'scales': ('ut1',)}}
+
+
+# with longitude and latitude swapped to get them in the right order,
+# insist that these are given as keyword arguments
+def kwargs_after_scale(f):
+    def new_f(*args, **kwargs):
+        if len(args) > 5:
+            raise ValueError('The order of longitude and latitude has been '
+                             'changed to lon, lat.  To avoid mistakes, '
+                             'set these (and later arguments) using keyword '
+                             'arguments: lon=..., lat=..., etc.')
+        return f(*args, **kwargs)
+    return new_f
+
 
 class Time(object):
     """
@@ -82,10 +106,11 @@ class Time(object):
         Format of input value(s)
     scale : str, optional
         Time scale of input value(s)
-    lat : float, optional
-        Earth latitude of observer (decimal degrees)
-    lon : float, optional
-        Earth longitude of observer (decimal degrees)
+    lon, lat : Angle or float, optional
+        Earth East longitude and latitude of observer.  Can be anything that
+        initialises an `Angle` object (if float, should be decimal degrees).
+        They are required to calculate local sidereal times and give improved
+        precision for conversion from/to TDB and TCB.
     copy : bool, optional
         Make a copy of the input values
     """
@@ -103,9 +128,10 @@ class Time(object):
     FORMATS = TIME_FORMATS
     """Dict of time formats"""
 
+    @kwargs_after_scale
     def __new__(cls, val, val2=None, format=None, scale=None,
                 precision=None, in_subfmt=None, out_subfmt=None,
-                lat=0.0, lon=0.0, copy=False):
+                lon=None, lat=None, copy=False):
 
         if isinstance(val, cls):
             self = val.replicate(format=format, copy=copy)
@@ -113,12 +139,24 @@ class Time(object):
             self = super(Time, cls).__new__(cls)
         return self
 
+    @kwargs_after_scale
     def __init__(self, val, val2=None, format=None, scale=None,
                  precision=None, in_subfmt=None, out_subfmt=None,
-                 lat=0.0, lon=0.0, copy=False):
+                 lon=None, lat=None, copy=False):
 
-        self.lat = lat
+        if lon is not None or lat is not None:
+            if lon is None or lat is None:
+                raise ValueError('Longitude and latitude should be either '
+                                 'both given or both absent')
+
+            # cannot import at top, as coordinates imports time
+            from ..coordinates import Longitude, Latitude
+            lon = Longitude(lon, 'degree', wrap_angle='180d')
+            lat = Latitude(lat, 'degree')
+
         self.lon = lon
+        self.lat = lat
+
         if precision is not None:
             self.precision = precision
         if in_subfmt is not None:
@@ -387,18 +425,97 @@ class Time(object):
         """Time values in current format as a numpy array"""
         return self._time.value
 
-    def _get_gmst(self, precession_model='gmst06'):
-        precession_model = getattr(erfa_time, precession_model.lower())
+    def gmst(self, precession='IAU2006'):
+        """Greenwich Mean Sidereal Time"""  # docstring reset below
+        if precession not in PRECESSION_MODELS:
+            raise ValueError(
+                'Precession model {} not among those implemented {}'
+                .format(precession, sorted(PRECESSION_MODELS.keys())))
+
+        return self._erfa_sidereal_time(PRECESSION_MODELS[precession])
+
+    def gst(self, precession_nutation='IAU2006A'):
+        """Greenwich Apparent Sidereal Time"""  # docstring reset below
+        if precession_nutation not in PRECESSION_NUTATION_MODELS:
+            raise ValueError(
+                'Precession-nutation model {} not among those implemented {}'
+                .format(precession_nutation,
+                        sorted(PRECESSION_NUTATION_MODELS.keys())))
+
+        return self._erfa_sidereal_time(
+            PRECESSION_NUTATION_MODELS[precession_nutation])
+
+    def lmst(self, precession='IAU2006'):
+        """Local Mean Sidereal Time"""  # docstring reset below
+        if self.lon is None:
+            raise ValueError('To calculate a local siderial time, the '
+                             'longitude in the Time object needs to be set.')
+        from ..coordinates import Longitude
+        return Longitude(self.gmst(precession) + self.lon, 'hourangle')
+
+    def lst(self, precession_nutation='IAU2006A'):
+        """Local Apparent Sidereal Time"""  # docstring reset below
+        if self.lon is None:
+            raise ValueError('To calculate a local siderial time, the '
+                             'longitude in the Time object needs to be set.')
+        from ..coordinates import Longitude
+        return Longitude(self.gst(precession_nutation) + self.lon, 'hourangle')
+
+    _st_doc = \
+        """{0} Sidereal Time
+
+        Parameters
+        ----------
+        {1} : str
+            {2} model to use.  Default: '{3}'.
+            Available models: {4}
+
+        Returns
+        -------
+        {5} : `Longitude`
+            Sidereal time as an angle quantity with units of hourangle
+
+        Notes
+        -----
+        The calculations for the IAU {2} models are done using
+        ERFA, which is based on the IAU Standards Of Fundamental Astronomy
+        (SOFA) library [1]_.
+
+        .. [1] http://www.iausofa.org/
+        """
+
+    gmst.__doc__ = _st_doc.format(
+        'Greenwich Mean', 'precession', 'Precession',
+        'IAU2006', sorted(PRECESSION_MODELS.keys()), 'gmst')
+
+    gst.__doc__ = _st_doc.format(
+        'Greenwich Apparent', 'precession_nutation', 'Precession-nutation',
+        'IAU2006A', sorted(PRECESSION_NUTATION_MODELS.keys()), 'gst')
+
+    lmst.__doc__ = _st_doc.format(
+        'Local Mean', 'precession', 'Precession',
+        'IAU2006', sorted(PRECESSION_MODELS.keys()), 'lmst')
+
+    lst.__doc__ = _st_doc.format(
+        'Local Apparent', 'precession_nutation', 'Precession-nutation',
+        'IAU2006A', sorted(PRECESSION_NUTATION_MODELS.keys()), 'gmst')
+
+    del _st_doc
+
+    def _erfa_sidereal_time(self, model):
+        """Caculate a sidereal time using a IAU precession/nutation model"""
 
         from ..coordinates import Longitude
-        from ..units import radian, hourangle
 
-        gmst = precession_model(self.ut1.jd1, self.ut1.jd2,
-                                self.tt.jd1, self.tt.jd2) * radian
+        erfa_function = model['function']
+        erfa_parameters = [getattr(getattr(self, scale)._time, jd_part)
+                           for scale in model['scales']
+                           for jd_part in ('jd1', 'jd2')]
 
-        return Longitude(gmst, hourangle)
+        sidereal_time = erfa_function(*erfa_parameters)
 
-    gmst = property(_get_gmst)
+        return Longitude(self._shaped_like_input(sidereal_time),
+                         'radian').to('hourangle')
 
     def copy(self, format=None):
         """
@@ -686,8 +803,8 @@ class Time(object):
             ut = njd1 + njd2
 
             # Compute geodetic params needed for d_tdb_tt()
-            phi = np.radians(self.lat)
-            elon = np.radians(self.lon)
+            elon = 0. if self.lon is None else self.lon.to("radian").value
+            phi = 0. if self.lat is None else self.lat.to("radian").value
             xyz = erfa_time.era_gd2gc(1, elon, phi, 0.0)
             u = np.sqrt(xyz[0] ** 2 + xyz[1] ** 2)
             v = xyz[2]
