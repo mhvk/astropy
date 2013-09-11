@@ -426,7 +426,7 @@ class Time(object):
         return self._time.value
 
     def gmst(self, precession='IAU2006'):
-        """Greenwich Mean Sidereal Time"""  # docstring reset below
+        """Greenwich Mean Sidereal Time"""  # docstring completed below
         if precession not in PRECESSION_MODELS:
             raise ValueError(
                 'Precession model {} not among those implemented {}'
@@ -435,7 +435,7 @@ class Time(object):
         return self._erfa_sidereal_time(PRECESSION_MODELS[precession])
 
     def gst(self, precession_nutation='IAU2006A'):
-        """Greenwich Apparent Sidereal Time"""  # docstring reset below
+        """Greenwich Apparent Sidereal Time"""  # docstring completed below
         if precession_nutation not in PRECESSION_NUTATION_MODELS:
             raise ValueError(
                 'Precession-nutation model {} not among those implemented {}'
@@ -446,7 +446,7 @@ class Time(object):
             PRECESSION_NUTATION_MODELS[precession_nutation])
 
     def lmst(self, precession='IAU2006'):
-        """Local Mean Sidereal Time"""  # docstring reset below
+        """Local Mean Sidereal Time"""  # docstring completed below
         if self.lon is None:
             raise ValueError('To calculate a local siderial time, the '
                              'longitude in the Time object needs to be set.')
@@ -454,50 +454,49 @@ class Time(object):
         return Longitude(self.gmst(precession) + self.lon, 'hourangle')
 
     def lst(self, precession_nutation='IAU2006A'):
-        """Local Apparent Sidereal Time"""  # docstring reset below
+        """Local Apparent Sidereal Time"""  # docstring completed below
         if self.lon is None:
             raise ValueError('To calculate a local siderial time, the '
                              'longitude in the Time object needs to be set.')
         from ..coordinates import Longitude
         return Longitude(self.gst(precession_nutation) + self.lon, 'hourangle')
 
-    _st_doc = \
-        """{0} Sidereal Time
+    _st_doc = """
 
         Parameters
         ----------
-        {1} : str
-            {2} model to use.  Default: '{3}'.
-            Available models: {4}
+        {0} : str
+            {1} model to use.  Default: '{2}'.
+            Available models: {3}
 
         Returns
         -------
-        {5} : `Longitude`
+        {4} : `Longitude`
             Sidereal time as an angle quantity with units of hourangle
 
         Notes
         -----
-        The calculations for the IAU {2} models are done using
+        The calculations for the IAU {1} models are done using
         ERFA, which is based on the IAU Standards Of Fundamental Astronomy
         (SOFA) library [1]_.
 
         .. [1] http://www.iausofa.org/
         """
 
-    gmst.__doc__ = _st_doc.format(
-        'Greenwich Mean', 'precession', 'Precession',
+    gmst.__doc__ += _st_doc.format(
+        'precession', 'Precession',
         'IAU2006', sorted(PRECESSION_MODELS.keys()), 'gmst')
 
-    gst.__doc__ = _st_doc.format(
-        'Greenwich Apparent', 'precession_nutation', 'Precession-nutation',
+    gst.__doc__ += _st_doc.format(
+        'precession_nutation', 'Precession-nutation',
         'IAU2006A', sorted(PRECESSION_NUTATION_MODELS.keys()), 'gst')
 
-    lmst.__doc__ = _st_doc.format(
-        'Local Mean', 'precession', 'Precession',
+    lmst.__doc__ += _st_doc.format(
+        'precession', 'Precession',
         'IAU2006', sorted(PRECESSION_MODELS.keys()), 'lmst')
 
-    lst.__doc__ = _st_doc.format(
-        'Local Apparent', 'precession_nutation', 'Precession-nutation',
+    lst.__doc__ += _st_doc.format(
+        'precession_nutation', 'Precession-nutation',
         'IAU2006A', sorted(PRECESSION_NUTATION_MODELS.keys()), 'gmst')
 
     del _st_doc
