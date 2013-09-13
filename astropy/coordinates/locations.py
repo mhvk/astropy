@@ -84,6 +84,22 @@ class EarthLocation(SphericalCoordinatesBase):
             d = Distance(value)
             self._distance = Distance(d.m + self._WGS84_MEAN_RAD.value, u.m)
 
+    def sidereal_time(self, time):
+        """
+        The local sidereal time at this location for the given time.
+
+        Parameters
+        ----------
+        time : astropy.time.Time object
+            The time to compute the LST
+
+        Returns
+        -------
+        lst : astropy.coordinates.angles.Longitude
+            The local sidereal time at this location for the time `time`.
+        """
+        raise NotImplementedError()
+
     @classmethod
     def from_name(cls, name):
         """
