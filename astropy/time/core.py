@@ -109,8 +109,8 @@ class Time(object):
     lon, lat : Angle or float, optional
         Earth East longitude and latitude of observer.  Can be anything that
         initialises an `Angle` object (if float, should be decimal degrees).
-        They are required to calculate local sidereal times and give improved
-        precision for conversion from/to TDB and TCB.
+        Providing these gives improved precision for conversion from/to
+        TDB and TCB.
     copy : bool, optional
         Make a copy of the input values
     """
@@ -444,22 +444,6 @@ class Time(object):
 
         return self._erfa_sidereal_time(
             PRECESSION_NUTATION_MODELS[precession_nutation])
-
-    def lmst(self, precession='IAU2006'):
-        """Local Mean Sidereal Time"""  # docstring completed below
-        if self.lon is None:
-            raise ValueError('To calculate a local siderial time, the '
-                             'longitude in the Time object needs to be set.')
-        from ..coordinates import Longitude
-        return Longitude(self.gmst(precession) + self.lon, 'hourangle')
-
-    def lst(self, precession_nutation='IAU2006A'):
-        """Local Apparent Sidereal Time"""  # docstring completed below
-        if self.lon is None:
-            raise ValueError('To calculate a local siderial time, the '
-                             'longitude in the Time object needs to be set.')
-        from ..coordinates import Longitude
-        return Longitude(self.gst(precession_nutation) + self.lon, 'hourangle')
 
     _st_doc = """
 

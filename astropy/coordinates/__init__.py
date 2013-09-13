@@ -10,6 +10,7 @@ from .errors import *
 from .angles import *
 from .coordsystems import *
 from .distances import *
+from .locations import *
 from .transformations import *
 from .builtin_systems import *
 from .name_resolve import *
