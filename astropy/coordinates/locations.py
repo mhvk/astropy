@@ -84,7 +84,7 @@ class EarthLocation(SphericalCoordinatesBase):
             d = Distance(value)
             self._distance = Distance(d.m + self._WGS84_MEAN_RAD.value, u.m)
 
-    def sidereal_time(self, time):
+    def sidereal_time(self, time, apparent=False, precession='IAU2006'):
         """
         The local sidereal time at this location for the given time.
 
@@ -92,13 +92,27 @@ class EarthLocation(SphericalCoordinatesBase):
         ----------
         time : astropy.time.Time object
             The time to compute the LST
+        apparent : bool
+            If True, gives the apparent sidereal time, otherwise the
+            result is the mean sidereal time.
+        precession : str
+            Any of the valid precession models from
+            `astropy.time.core.PRECESSION_MODELS`.
 
         Returns
         -------
         lst : astropy.coordinates.angles.Longitude
             The local sidereal time at this location for the time `time`.
         """
-        raise NotImplementedError()
+        from ..time import Time
+
+        if not isinstance(time, Time):
+            time = Time(time)
+
+        if apparent:
+            return Longitude(time.gst(precession) + self.lon, 'hourangle')
+        else:
+            return Longitude(time.gmst(precession) + self.lon, 'hourangle')
 
     @classmethod
     def from_name(cls, name):
