@@ -20,7 +20,7 @@ import numpy as np
 from ..utils.compat.fractions import Fraction
 from ..utils.exceptions import AstropyWarning
 from ..utils.misc import isiterable
-from .utils import is_effectively_unity
+from .utils import is_effectively_unity, sanitize_scale
 from . import format as unit_format
 
 # TODO: Support functional units, e.g. log(x), ln(x)
@@ -1900,11 +1900,11 @@ class CompositeUnit(UnitBase):
         # kwarg `_error_check` is False, the error checking is turned
         # off.
         if _error_check:
-            if is_effectively_unity(scale):
-                scale = 1.0
+            scale = sanitize_scale(scale)
             for base in bases:
                 if not isinstance(base, UnitBase):
-                    raise TypeError("bases must be sequence of UnitBase instances")
+                    raise TypeError(
+                        "bases must be sequence of UnitBase instances")
             powers = [self._validate_power(p) for p in powers]
 
         self._scale = scale
@@ -1987,11 +1987,7 @@ class CompositeUnit(UnitBase):
 
         self._bases = [x[0] for x in new_parts]
         self._powers = [x[1] for x in new_parts]
-
-        if is_effectively_unity(scale):
-            scale = 1.0
-
-        self._scale = scale
+        self._scale = sanitize_scale(scale)
 
     def __copy__(self):
         """
