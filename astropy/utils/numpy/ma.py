@@ -1,9 +1,24 @@
 from astropy.extern import six
+import numpy as np
 from numpy import ndarray
+import numpy.core.umath as umath
 from numpy.ma.core import (MaskedArray as NumpyMaskedArray,
+                           MaskedIterator as NumpyMaskedIterator,
                            masked, nomask, masked_print_option,
                            _recursive_make_descr, _recursive_printoption,
-                           _print_templates, getmask, make_mask_none)
+                           _print_templates, getmask, make_mask_none, mask_or,
+                           MaskType, MaskError)
+
+
+class MaskedIterator(NumpyMaskedIterator):
+    def __getitem__(self, indx):
+        result = self.dataiter.__getitem__(indx).view(type(self.ma))
+        result._update_from(self.ma._data)
+        if self.maskiter is not None:
+            _mask = self.maskiter.__getitem__(indx)
+            _mask.shape = result.shape
+            result._mask = _mask
+        return result
 
 
 class MaskedArray(NumpyMaskedArray):
@@ -69,6 +84,52 @@ class MaskedArray(NumpyMaskedArray):
         elif n <= 1:
             return _print_templates['short_std'] % parameters
         return _print_templates['long_std'] % parameters
+
+    def __getitem__(self, indx):
+        """x.__getitem__(y) <==> x[y]
+
+        Return the item described by i, as a masked array.
+
+        """
+        # astropy: _data = self.data (instead of view)
+
+        # This test is useful, but we should keep things light...
+#        if getmask(indx) is not nomask:
+#            msg = "Masked arrays must be filled before they can be used as indices!"
+#            raise IndexError(msg)
+        dout = self.data[indx]
+        # We could directly use ndarray.__getitem__ on self...
+        # But then we would have to modify __array_finalize__ to prevent the
+        # mask of being reshaped if it hasn't been set up properly yet...
+        # So it's easier to stick to the current version
+        _mask = self._mask
+        if not getattr(dout, 'ndim', False):
+            # A record ................
+            if isinstance(dout, np.void):
+                mask = _mask[indx]
+                # We should always re-cast to mvoid, otherwise users can
+                # change masks on rows that already have masked values, but not
+                # on rows that have no masked values, which is inconsistent.
+                dout = mvoid(dout, mask=mask, hardmask=self._hardmask)
+            # Just a scalar............
+            elif _mask is not nomask and _mask[indx]:
+                return masked
+        else:
+            # Force dout to MA ........
+            dout = dout.view(type(self))
+            # Inherit attributes from self
+            dout._update_from(self)
+            # Check the fill_value ....
+            if isinstance(indx, six.text_type):
+                if self._fill_value is not None:
+                    dout._fill_value = self._fill_value[indx]
+                dout._isfield = True
+            # Update the mask if needed
+            if _mask is not nomask:
+                dout._mask = _mask[indx]
+                dout._sharedmask = True
+#               Note: Don't try to check for m.any(), that'll take too long...
+        return dout
 
     def __setitem__(self, indx, value):
         """x.__setitem__(i, y) <==> x[i]=y
@@ -148,3 +209,15 @@ class MaskedArray(NumpyMaskedArray):
             _data[indx] = dindx
             _mask[indx] = mindx
         return
+
+    def _get_flat(self):
+        "Return a flat iterator."
+        return MaskedIterator(self)
+
+    def _set_flat(self, value):
+        "Set a flattened version of self to value."
+        y = self.ravel()
+        y[:] = value
+    #
+    flat = property(fget=_get_flat, fset=_set_flat,
+                    doc="Flat version of the array.")

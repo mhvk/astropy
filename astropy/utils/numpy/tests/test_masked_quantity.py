@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 import numpy as np
+from numpy.ma import masked
 from ..ma import MaskedArray
 
 from ....tests.helper import pytest
@@ -18,12 +19,17 @@ class TestMaskedArrayWithQuantity():
         assert np.all(self.mq.data == self.q)
 
     def test_access(self):
-        mq_sel = self.mq[:2]
-        q_sel = self.q[:2]
-        mask_sel = self.mq.mask[:2]
-        assert np.all(mq_sel == MaskedArray(q_sel, mask_sel))
-        assert np.all(mq_sel.data == q_sel)
-        assert np.all(mq_sel.mask == mask_sel)
+        mq_sel0 = self.mq[0]
+        assert mq_sel0 is masked
+        mq_sel1 = self.mq[1]
+        q_sel1 = self.q[1]
+        assert mq_sel1 == q_sel1
+        mq_sel2 = self.mq[:2]
+        q_sel2 = self.q[:2]
+        mask_sel2 = self.mq.mask[:2]
+        assert np.all(mq_sel2 == MaskedArray(q_sel2, mask_sel2))
+        assert np.all(mq_sel2.data == q_sel2)
+        assert np.all(mq_sel2.mask == mask_sel2)
 
     def test_setter(self):
         q = np.arange(4., 7.) * u.m
