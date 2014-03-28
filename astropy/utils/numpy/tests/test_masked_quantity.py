@@ -25,6 +25,13 @@ class TestMaskedArrayWithQuantity():
         assert np.all(mq_sel.data == q_sel)
         assert np.all(mq_sel.mask == mask_sel)
 
+    def test_setter(self):
+        q = np.arange(4., 7.) * u.m
+        mq = MaskedArray(np.arange(4., 7.) * u.m, mask=[False, False, False])
+        mq[1] = 1. * u.km
+        assert mq.data[1] == 1. * u.km
+        assert np.all((mq.data == q) == np.array([True, False, True]))
+
     def test_filled(self):
         assert np.all(self.mq.filled() == self.q.unit *
                       np.where(self.mq.mask, self.mq.fill_value, self.q.value))
