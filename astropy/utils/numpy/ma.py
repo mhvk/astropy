@@ -22,18 +22,11 @@ class MaskedIterator(NumpyMaskedIterator):
 
 
 class MaskedArray(NumpyMaskedArray):
-    def _get_data(self):
-        data = super(MaskedArray, self)._get_data()
-        if hasattr(data, '__dict__'):
-            data.__dict__.update(self._optinfo)
-        return data
-    _data = property(fget=_get_data)
-    data = property(fget=_get_data)
-
     def __str__(self):
         """String representation.
 
         """
+        # see https://github.com/numpy/numpy/pull/4576  MERGED
         if masked_print_option.enabled():
             f = masked_print_option
             if self is masked:
@@ -71,6 +64,7 @@ class MaskedArray(NumpyMaskedArray):
         """Literal string representation.
 
         """
+        # see https://github.com/numpy/numpy/pull/4576  MERGED
         n = len(self.shape)
         name = ('array' if type(self) is ndarray else
                 self._baseclass.__name__)
@@ -91,6 +85,7 @@ class MaskedArray(NumpyMaskedArray):
         Return the item described by i, as a masked array.
 
         """
+        # see https://github.com/numpy/numpy/pull/4585
         # astropy: _data = self.data (instead of view)
 
         # This test is useful, but we should keep things light...
@@ -138,6 +133,7 @@ class MaskedArray(NumpyMaskedArray):
         locations.
 
         """
+        # see https://github.com/numpy/numpy/pull/4585
         # astropy changes:
         # _data = self.data (instead of view)
         # ndarray.__setitem__(_data, indx, value)
