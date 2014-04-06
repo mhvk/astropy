@@ -267,7 +267,6 @@ class Angle(u.SpecificTypeQuantity):
         # might be an array.
         if unit is u.degree:
             if decimal:
-                values = self.degree
                 if precision is not None:
                     func = ("{0:0." + str(precision) + "f}").format
                 else:
@@ -275,14 +274,12 @@ class Angle(u.SpecificTypeQuantity):
             else:
                 if sep == 'fromunit':
                     sep = 'dms'
-                values = self.degree
                 func = lambda x: util.degrees_to_string(
                     x, precision=precision, sep=sep, pad=pad,
                     fields=fields)
 
         elif unit is u.hourangle:
             if decimal:
-                values = self.hour
                 if precision is not None:
                     func = ("{0:0." + str(precision) + "f}").format
                 else:
@@ -290,20 +287,17 @@ class Angle(u.SpecificTypeQuantity):
             else:
                 if sep == 'fromunit':
                     sep = 'hms'
-                values = self.hour
                 func = lambda x: util.hours_to_string(
                     x, precision=precision, sep=sep, pad=pad,
                     fields=fields)
 
         elif unit.is_equivalent(u.radian):
             if decimal:
-                values = self.to(unit).value
                 if precision is not None:
                     func = ("{0:1." + str(precision) + "f}").format
                 else:
                     func = "{0:g}".format
             elif sep == 'fromunit':
-                values = self.to(unit).value
                 unit_string = unit.to_string(format=format)
                 if format == 'latex':
                     unit_string = unit_string[1:-1]
@@ -327,17 +321,19 @@ class Angle(u.SpecificTypeQuantity):
             raise u.UnitsError(
                 "The unit value provided is not an angular unit.")
 
-        def do_format(val):
-            s = func(float(val))
+        def do_format(val, factor):
+            try:
+                s = func(float(val * factor))
+            except TypeError:  # for masked elements in MaskedArray
+                return val
             if alwayssign and not s.startswith('-'):
                 s = '+' + s
             if format == 'latex':
                 s = '${0}$'.format(s)
             return s
 
-        format_ufunc = np.vectorize(do_format, otypes=['U'])
-        result = format_ufunc(values)
-
+        format_ufunc = np.vectorize(do_format)
+        result = format_ufunc(self.value, self.unit.to(unit))
         if result.ndim == 0:
             result = result[()]
         return result
