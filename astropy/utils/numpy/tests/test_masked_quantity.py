@@ -5,11 +5,11 @@ from ..ma import MaskedArray
 
 from ....tests.helper import pytest
 from ....units import Quantity
-from ....coordinates import Longitude, Distance
+from ....coordinates import Angle, Longitude, Distance
 from .... import units as u
 
 
-@pytest.fixture(scope='module', params=[Quantity, Distance])
+@pytest.fixture(scope='module', params=[Quantity, Distance, Longitude])
 def quantity_type(request):
     return request.param
 
@@ -57,9 +57,19 @@ class TestMaskedArrayWithQuantity(object):
 
     def test_representation(self, quantity_type):
         self._setup(quantity_type)
-        assert str(self.mq) == '[-- 4.0 5.0] {0}'.format(self.q.unit)
-        assert repr(self.mq) == (
-            'masked_{0}(data = [-- 4.0 5.0] {1},\n'
-            '                mask = [ True False False],\n'
-            '          fill_value = 1e+20)\n'
-            .format(self.quantity_type.__name__, self.q.unit))
+        if issubclass(quantity_type, Angle):
+            assert str(self.mq) == "[-- '4d00m00s' '5d00m00s']"
+            assert repr(self.mq) == (
+                "masked_{0}(data = [-- '4d00m00s' '5d00m00s'],\n"
+                "{1}        mask = [ True False False],\n"
+                "{1}  fill_value = 1e+20)\n"
+                .format(self.quantity_type.__name__,
+                        " " * len(self.quantity_type.__name__)))
+        else:
+            assert str(self.mq) == "[-- 4.0 5.0] {0}".format(self.q.unit)
+            assert repr(self.mq) == (
+                "masked_{0}(data = [-- 4.0 5.0] {1},\n"
+                "{2}        mask = [ True False False],\n"
+                "{2}  fill_value = 1e+20)\n"
+                .format(self.quantity_type.__name__, self.q.unit,
+                        " " * len(self.quantity_type.__name__)))
