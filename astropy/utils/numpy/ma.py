@@ -6,7 +6,11 @@ NUMPY_VERSION = version.LooseVersion(np.__version__)
 
 BUG3907 = NUMPY_VERSION < version.LooseVersion('9.9.9')
 BUG4576 = NUMPY_VERSION < version.LooseVersion('1.9.0')
-BUG4585 = NUMPY_VERSION < version.LooseVersion('9.9.9')
+BUG4585 = NUMPY_VERSION < version.LooseVersion('1.9.0')
+BUG4586 = NUMPY_VERSION < version.LooseVersion('9.9.9')
+
+# not essential for astropy
+# BUG4617 = NUMPY_VERSION < version.LooseVersion('9.9.9')
 
 
 from numpy import ndarray
@@ -18,7 +22,7 @@ from numpy.ma.core import (
     _print_templates, getmask, make_mask_none, mask_or, MaskType, MaskError,
     _MaskedBinaryOperation as Numpy_MaskedBinaryOperation,
     _DomainedBinaryOperation as Numpy_DomainedBinaryOperation,
-    get_masked_subclass, ufunc_domain, filled, _DomainSafeDivide)
+    get_masked_subclass, ufunc_domain, ufunc_fills, filled, _DomainSafeDivide)
 
 
 if BUG3907:
@@ -134,7 +138,6 @@ if BUG3907:
             mask = make_mask_none(np.shape(arr), getattr(arr, 'dtype', None))
         return mask
 
-
     class _MaskedBinaryOperation(Numpy_MaskedBinaryOperation):
         # https://github.com/numpy/numpy/pull/3907
         def __call__(self, a, b, *args, **kwargs):
@@ -178,17 +181,10 @@ if BUG3907:
                 except:
                     pass
             # Transforms to a (subclass of) MaskedArray
-            result = result.view(get_masked_subclass(a, b))
-            result._mask = m
-            # Update the optional info from the inputs
-            if isinstance(b, MaskedArray):
-                if isinstance(a, MaskedArray):
-                    result._update_from(a)
-                else:
-                    result._update_from(b)
-            elif isinstance(a, MaskedArray):
-                result._update_from(a)
-            return result
+            masked_result = result.view(get_masked_subclass(a, b))
+            masked_result._mask = m
+            masked_result._update_from(result)
+            return masked_result
 
         def outer(self, a, b):
             """Return the function applied to the outer product of a and b.
@@ -256,22 +252,30 @@ if BUG3907:
             except:
                 pass
 
-            result = result.view(get_masked_subclass(a, b))
-            result._mask = m
-            if isinstance(b, MaskedArray):
-                if isinstance(a, MaskedArray):
-                    result._update_from(a)
-                else:
-                    result._update_from(b)
-            elif isinstance(a, MaskedArray):
-                result._update_from(a)
-            return result
+            # Transforms to a (subclass of) MaskedArray
+            masked_result = result.view(get_masked_subclass(a, b))
+            masked_result._mask = m
+            masked_result._update_from(result)
+            return masked_result
 
 
     # Binary ufuncs ...............................................................
+    # def attribute_wrapper(attr, umath_default):
+    #     def wrapper(da, db, *args, **kwargs):
+    #         if hasattr(da, attr):
+    #             return getattr(da, attr)(db, *args, **kwargs)
+    #         else:
+    #             return umath_default(da, db, *args, **kwargs)
+    #     return wrapper
+
     add = _MaskedBinaryOperation(umath.add)
     subtract = _MaskedBinaryOperation(umath.subtract)
+    # add = _MaskedBinaryOperation(attribute_wrapper('__add__', umath.add))
+    # subtract = _MaskedBinaryOperation(
+    #     attribute_wrapper('__sub__', umath.subtract))
     multiply = _MaskedBinaryOperation(umath.multiply, 1, 1)
+    # multiply = _MaskedBinaryOperation(
+    #     attribute_wrapper('__mul__', umath.multiply), 1, 1)
     arctan2 = _MaskedBinaryOperation(umath.arctan2, 0.0, 1.0)
     equal = _MaskedBinaryOperation(umath.equal)
     equal.reduce = None
@@ -296,8 +300,14 @@ if BUG3907:
     hypot = _MaskedBinaryOperation(umath.hypot)
     # Domained binary ufuncs ......................................................
     divide = _DomainedBinaryOperation(umath.divide, _DomainSafeDivide(), 0, 1)
+    # divide = _DomainedBinaryOperation(
+    #     attribute_wrapper('__divide__', umath.divide),
+    #     _DomainSafeDivide(), 0, 1)
     true_divide = _DomainedBinaryOperation(umath.true_divide,
                                            _DomainSafeDivide(), 0, 1)
+    # true_divide = _DomainedBinaryOperation(
+    #     attribute_wrapper('__truediv__', umath.true_divide),
+    #     _DomainSafeDivide(), 0, 1)
     floor_divide = _DomainedBinaryOperation(umath.floor_divide,
                                             _DomainSafeDivide(), 0, 1)
     remainder = _DomainedBinaryOperation(umath.remainder,
@@ -378,7 +388,7 @@ class MaskedArray(NumpyMaskedArray):
                 return _print_templates['short_std'] % parameters
             return _print_templates['long_std'] % parameters
 
-    if BUG4585:
+    if BUG4586:
         def __getitem__(self, indx):
             """x.__getitem__(y) <==> x[y]
 
@@ -386,7 +396,6 @@ class MaskedArray(NumpyMaskedArray):
 
             """
             # see https://github.com/numpy/numpy/pull/4585
-            # astropy: _data = self.data (instead of view)
 
             # This test is useful, but we should keep things light...
     #        if getmask(indx) is not nomask:
@@ -518,3 +527,57 @@ class MaskedArray(NumpyMaskedArray):
         #
         flat = property(fget=_get_flat, fset=_set_flat,
                         doc="Flat version of the array.")
+
+    if BUG3907:  # only to ensure redef's get picked up
+        def __add__(self, other):
+            "Add other to self, and return a new masked array."
+            return add(self, other)
+        #
+        def __radd__(self, other):
+            "Add other to self, and return a new masked array."
+            return add(self, other)
+        #
+        def __sub__(self, other):
+            "Subtract other to self, and return a new masked array."
+            return subtract(self, other)
+        #
+        def __rsub__(self, other):
+            "Subtract other to self, and return a new masked array."
+            return subtract(other, self)
+        #
+        def __mul__(self, other):
+            "Multiply other by self, and return a new masked array."
+            return multiply(self, other)
+        #
+        def __rmul__(self, other):
+            "Multiply other by self, and return a new masked array."
+            return multiply(self, other)
+        #
+        def __div__(self, other):
+            "Divide other into self, and return a new masked array."
+            return divide(self, other)
+        #
+        def __truediv__(self, other):
+            "Divide other into self, and return a new masked array."
+            return true_divide(self, other)
+        #
+        def __rtruediv__(self, other):
+            "Divide other into self, and return a new masked array."
+            return true_divide(other, self)
+        #
+        def __floordiv__(self, other):
+            "Divide other into self, and return a new masked array."
+            return floor_divide(self, other)
+        #
+        def __rfloordiv__(self, other):
+            "Divide other into self, and return a new masked array."
+            return floor_divide(other, self)
+        #
+        def __pow__(self, other):
+            "Raise self to the power other, masking the potential NaNs/Infs"
+            return power(self, other)
+        #
+        def __rpow__(self, other):
+            "Raise self to the power other, masking the potential NaNs/Infs"
+            return power(other, self)
+        #............................................
