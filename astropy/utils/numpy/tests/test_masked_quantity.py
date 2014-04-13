@@ -41,7 +41,7 @@ class TestMaskedArrayWithQuantity(object):
         mq_sel2 = self.mq[:2]
         q_sel2 = self.q[:2]
         mask_sel2 = self.mq.mask[:2]
-        assert np.all(mq_sel2 == MaskedArray(q_sel2, mask_sel2))
+        assert np.all(mq_sel2 == mq_sel2.__class__(q_sel2, mask=mask_sel2))
         assert np.all(mq_sel2.data == q_sel2)
         assert np.all(mq_sel2.mask == mask_sel2)
 
@@ -81,6 +81,26 @@ class TestMaskedArrayWithQuantity(object):
                 .format(self.quantity_type.__name__, self.q.unit,
                         " " * len(self.quantity_type.__name__)))
 
+
+@pytest.mark.usefixtures('quantity_type')
+class TestMaskedQuantity(TestMaskedArrayWithQuantity):
+    """Test one can construct a mixin class of MaskedArray and Quantity"""
+    # this will run all tests from TestMaskedArrayWithQuantity
+    # plus the new ones that checks the Quantity methods
+    def _setup(self, quantity_type):
+        super(TestMaskedQuantity, self)._setup(quantity_type)
+
+        # setup class following ~numpy.ma.tests.test_subclassing.MSubArray
+        class MQ(MaskedArray, quantity_type):
+            def __new__(cls, *args, **kwargs):
+                mask = kwargs.pop('mask', np.ma.nomask)
+                q = quantity_type(*args, **kwargs)
+                return MaskedArray.__new__(cls, data=q, mask=mask)
+
+        self.MQ = MQ
+        self.mq = MQ(self.q.copy(), mask=[True, False, False])
+        self.mq2 = MQ(self.q2.copy(), mask=[True, False, False])
+
     def test_addition_subtraction(self, quantity_type):
         self._setup(quantity_type)
         qsum = self.q + self.q2
@@ -107,19 +127,3 @@ class TestMaskedArrayWithQuantity(object):
             mqratio = self.mq / self.mq2
             assert np.all((mqratio.data == qratio) |
                           mqratio.mask & np.isinf(qratio))
-
-
-@pytest.mark.usefixtures('quantity_type')
-class TestMaskedQuantity(TestMaskedArrayWithQuantity):
-    """Test one can construct a mixin class of MaskedArray and Quantity"""
-    # this will run all tests from TestMaskedArrayWithQuantity
-    # plus the new ones that checks the Quantity methods
-    def _setup(self, quantity_type):
-        super(TestMaskedQuantity, self)._setup(quantity_type)
-
-        class MQ(MaskedArray, quantity_type):
-            pass
-
-        self.MQ = MQ
-        self.mq = MQ(self.q.copy(), mask=[True, False, False])
-        self.mq2 = MQ(self.q2.copy(), mask=[True, False, False])
