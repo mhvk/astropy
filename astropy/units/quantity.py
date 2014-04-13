@@ -338,6 +338,11 @@ class Quantity(np.ndarray):
             return value.to(unit)
 
     def __array_finalize__(self, obj):
+        # ndarray does not have __array_finalize__, but we could be a mixin
+        # subclass (e.g., class MaskedQuantity(Quantity, MaskedArray)
+        if callable(getattr(super(Quantity, self),
+                            '__array_finalize__', None)):
+            super(Quantity, self).__array_finalize__(obj)
         # If our unit is not set and obj has a valid one, use it.
         if self._unit is None:
             unit = getattr(obj, '_unit', None)
@@ -357,6 +362,9 @@ class Quantity(np.ndarray):
         # output array which we can e.g. change to an array sub-class, add
         # attributes to, etc. After this is called, then the ufunc is called
         # and the values in this empty array are set.
+
+        # In case, through a mixin, ndarray is not directly above us.
+        obj = super(Quantity, self).__array_prepare__(obj, context)
 
         # If no context is set, just return the input
         if context is None:
@@ -531,11 +539,10 @@ class Quantity(np.ndarray):
         return result
 
     def __array_wrap__(self, obj, context=None):
-
         if context is None:
             # Methods like .squeeze() created a new `ndarray` and then call
             # __array_wrap__ to turn the array into self's subclass.
-            return self._new_view(obj)
+            obj = self._new_view(obj)
 
         else:
             # with context defined, we are continuing after a ufunc evaluation.
@@ -615,12 +622,17 @@ class Quantity(np.ndarray):
                     obj = self._new_view(out, result_unit)
 
             if result_unit is None:  # return a plain array
-                return obj.view(np.ndarray)
+                obj = obj.view(np.ndarray)
             elif obj is self:  # all OK now, so set unit.
                 obj._set_unit(result_unit)
-                return obj
-            else:
-                return obj
+
+        # ndarray does not have __array_wrap__, but we could be a mixin
+        # subclass (e.g., class MaskedQuantity(Quantity, MaskedArray)
+        # However, ndarray makes obj into a plain array -- the last thing
+        # we want
+        # obj = super(Quantity, self).__array_wrap__(obj, context)
+
+        return obj
 
     def __deepcopy__(self, memo):
         # If we don't define this, ``copy.deepcopy(quantity)`` will
