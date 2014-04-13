@@ -8,11 +8,13 @@ BUG3907 = NUMPY_VERSION < version.LooseVersion('9.9.9')
 BUG4576 = NUMPY_VERSION < version.LooseVersion('1.9.0')
 BUG4585 = NUMPY_VERSION < version.LooseVersion('1.9.0')
 BUG4586 = NUMPY_VERSION < version.LooseVersion('9.9.9')
+BUGTBD = True
 
 # not essential for astropy
 # BUG4617 = NUMPY_VERSION < version.LooseVersion('9.9.9')
 
 
+from functools import reduce
 from numpy import ndarray
 import numpy.core.umath as umath
 from numpy.ma.core import (
@@ -233,7 +235,8 @@ if BUG3907:
             # Apply the domain
             domain = ufunc_domain.get(self.f, None)
             if domain is not None:
-                m |= filled(domain(da, db), True)
+                m |= filled(domain(da.view(np.ndarray),
+                                   db.view(np.ndarray)), True)
             # Take care of the scalar case first
             if (not m.ndim):
                 if m:
@@ -581,3 +584,53 @@ class MaskedArray(NumpyMaskedArray):
             "Raise self to the power other, masking the potential NaNs/Infs"
             return power(other, self)
         #............................................
+
+    if BUGTBD:
+        def __array_wrap__(self, obj, context=None):
+            """
+            Special hook for ufuncs.
+            Wraps the numpy array and sets the mask according to context.
+            """
+            result = obj.view(type(self))
+            result._update_from(self)
+            #..........
+            if context is not None:
+                result._mask = result._mask.copy()
+                (func, args, _) = context
+                m = reduce(mask_or, [getmaskarray(arg) for arg in args])
+                # Get the domain mask................
+                domain = ufunc_domain.get(func, None)
+                if domain is not None:
+                    # Take the domain, and make sure it's a ndarray
+                    args_array = [arg.view(np.ndarray) for arg in args]
+                    if len(args) > 2:
+                        d = filled(reduce(domain, args_array), True)
+                    else:
+                        d = filled(domain(*args_array), True)
+                    # Fill the result where the domain is wrong
+                    try:
+                        # Binary domain: take the last value
+                        fill_value = ufunc_fills[func][-1]
+                    except TypeError:
+                        # Unary domain: just use this one
+                        fill_value = ufunc_fills[func]
+                    except KeyError:
+                        # Domain not recognized, use fill_value instead
+                        fill_value = self.fill_value
+                    result = result.copy()
+                    np.copyto(result, fill_value, where=d)
+                    # Update the mask
+                    if m is nomask:
+                        if d is not nomask:
+                            m = d
+                    else:
+                        # Don't modify inplace, we risk back-propagation
+                        m = (m | d)
+                # Make sure the mask has the proper size
+                if result.shape == () and m:
+                    return masked
+                else:
+                    result._mask = m
+                    result._sharedmask = False
+            #....
+            return result
