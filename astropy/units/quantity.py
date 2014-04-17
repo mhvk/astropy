@@ -784,18 +784,18 @@ class Quantity(np.ndarray):
 
     # Numerical types
     def __float__(self):
-        try:
-            return float(self.to(dimensionless_unscaled).value)
-        except (UnitsError, TypeError):
-            raise TypeError('Only dimensionless scalar quantities can be '
-                            'converted to Python scalars')
+        decomposed = self.unit.decompose()
+        if len(decomposed.bases) == 0:
+            return float(self.value) * decomposed.scale
+        raise TypeError('Only dimensionless scalar quantities can be '
+                        'converted to Python scalars')
 
     def __int__(self):
-        try:
-            return int(self.to(dimensionless_unscaled).value)
-        except (UnitsError, TypeError):
-            raise TypeError('Only dimensionless scalar quantities can be '
-                            'converted to Python scalars')
+        decomposed = self.unit.decompose()
+        if len(decomposed.bases) == 0:
+            return int(float(self.value) * decomposed.scale)
+        raise TypeError('Only dimensionless scalar quantities can be '
+                        'converted to Python scalars')
 
     def __index__(self):
         # for indices, we do not want to mess around with scaling at all,
@@ -809,11 +809,11 @@ class Quantity(np.ndarray):
 
     if six.PY2:
         def __long__(self):
-            try:
-                return long(self.to(dimensionless_unscaled).value)
-            except (UnitsError, TypeError):
-                raise TypeError('Only dimensionless scalar quantities can be '
-                                'converted to Python scalars')
+            decomposed = self.unit.decompose()
+            if len(decomposed.bases) == 0:
+                return long(float(self.value) * decomposed.scale)
+            raise TypeError('Only dimensionless scalar quantities can be '
+                            'converted to Python scalars')
 
     # Display
     # TODO: we may want to add a hook for dimensionless quantities?
