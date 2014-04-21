@@ -782,7 +782,6 @@ def test_copy():
     assert np.all(q1.value == q2.value)
     assert q1.unit == q2.unit
     assert q1.dtype == q2.dtype
-
     assert q1.value is not q2.value
 
 
