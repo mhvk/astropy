@@ -59,6 +59,11 @@ Bug Fixes
 
 - ``astropy.units``
 
+  - ``Quantity._repr_latex_()`` returns ``NotImplementedError`` for quantity
+    arrays instead of an uninformative formatting exception. [#2258]
+
+  - Ensure ``Quantity.flat`` always returns ``Quantity``. [#2251]
+
 - ``astropy.utils``
 
 - ``astropy.vo``
