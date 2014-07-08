@@ -490,6 +490,10 @@ API Changes
 Bug Fixes
 ^^^^^^^^^
 
+- ``astropy.coordinates``
+
+  - ``Distance`` can now take a list of quantities. [#2261]
+
 - ``astropy.constants``
 
   - ``astropy.constants.Contant`` objects can now be deep
