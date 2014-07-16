@@ -81,8 +81,7 @@ def PR4866(Class=np.ma.mvoid):
     """
     a = np.array((1., 1.), dtype=('f8,f8'))
     try:
-        ma = Class(a, mask=np.array((False, False), dtype=('b1,b1')),
-                   copy=False, subok=True)
+        ma = Class(a, mask=[(False, False)], copy=False, subok=True)
         # might as well check reason this was fixed
         ma['f0'] = 2.
         return a['f0'] == 2.
@@ -403,15 +402,43 @@ if not PR3907():
     mod = _DomainedBinaryOperation(umath.mod, _DomainSafeDivide(), 0, 1)
 
 
+if PR4866():
+    mvoid = Numpy_mvoid
+else:  # need to overwrite mvoid before it is used elsewhere
+    class mvoid(Numpy_mvoid):
+        def __new__(self, data, mask=nomask, dtype=None, fill_value=None,
+                    hardmask=False, copy=True, subok=False):
+            _data = np.array(data, copy=copy, subok=subok, dtype=dtype)
+            _data = _data.view(self)
+            _data._hardmask = hardmask
+            if mask is not nomask:
+                if isinstance(mask, np.void):
+                    _data._mask = mask
+                else:
+                    try:
+                        # Mask is already a 0D array
+                        _data._mask = np.void(mask)
+                    except TypeError:
+                        # Transform the mask to a void
+                        mdtype = make_mask_descr(dtype or data.dtype)
+                        _data._mask = np.array(mask, dtype=mdtype)[()]
+            if fill_value is not None:
+                _data.fill_value = fill_value
+            return _data
+
+
 if not PR4585():
     class MaskedIterator(NumpyMaskedIterator):
         def __getitem__(self, indx):
             result = self.dataiter.__getitem__(indx).view(type(self.ma))
-            result._update_from(self.ma._data)
             if self.maskiter is not None:
                 _mask = self.maskiter.__getitem__(indx)
-                _mask.shape = result.shape
-                result._mask = _mask
+                if isinstance(_mask, ndarray):
+                    result._mask = _mask
+                elif isinstance(_mask, np.void):
+                    return mvoid(result, mask=_mask, hardmask=self.ma._hardmask)
+                elif _mask: # Just a scalar, masked
+                    return masked
             return result
 
 
@@ -475,7 +502,7 @@ class MaskedArray(NumpyMaskedArray):
                 return _print_templates['short_std'] % parameters
             return _print_templates['long_std'] % parameters
 
-    if not PR4586():
+    if not PR4586() or not PR4866():
         def __getitem__(self, indx):
             """x.__getitem__(y) <==> x[y]
 
@@ -718,25 +745,3 @@ class MaskedArray(NumpyMaskedArray):
                     result._sharedmask = False
             #....
             return result
-
-if not PR4866():
-    class mvoid(Numpy_mvoid):
-        def __new__(self, data, mask=nomask, dtype=None, fill_value=None,
-                    hardmask=False):
-            _data = np.array(data, copy=False, subok=True, dtype=dtype)
-            _data = _data.view(self)
-            _data._hardmask = hardmask
-            if mask is not nomask:
-                if isinstance(mask, np.void):
-                    _data._mask = mask
-                else:
-                    try:
-                        # Mask is already a 0D array
-                        _data._mask = np.void(mask)
-                    except TypeError:
-                        # Transform the mask to a void
-                        mdtype = make_mask_descr(dtype)
-                        _data._mask = np.array(mask, dtype=mdtype)[()]
-            if fill_value is not None:
-                _data.fill_value = fill_value
-            return _data
