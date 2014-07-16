@@ -8,6 +8,18 @@ BUG3907 = NUMPY_VERSION < version.LooseVersion('9.9.9')
 BUG4576 = NUMPY_VERSION < version.LooseVersion('1.9.0')
 BUG4585 = NUMPY_VERSION < version.LooseVersion('1.9.0')
 BUG4586 = NUMPY_VERSION < version.LooseVersion('9.9.9')
+
+
+def BUG4866(function=np.ma.mvoid):
+    a = np.array((1., 1.), dtype=('f8,f8'))
+    try:
+        ma = function(a, mask=np.array((False, False), dtype=('b1,b1')))
+        ma['f0'] = 2.
+        return a['f0'] != 2.
+    except:
+        return True
+
+
 BUGTBD = True
 
 # not essential for astropy
@@ -24,7 +36,8 @@ from numpy.ma.core import (
     _print_templates, getmask, make_mask_none, mask_or, MaskType, MaskError,
     _MaskedBinaryOperation as Numpy_MaskedBinaryOperation,
     _DomainedBinaryOperation as Numpy_DomainedBinaryOperation,
-    get_masked_subclass, ufunc_domain, ufunc_fills, filled, _DomainSafeDivide)
+    get_masked_subclass, ufunc_domain, ufunc_fills, filled, _DomainSafeDivide,
+    mvoid as Numpy_mvoid, make_mask_descr)
 
 
 if BUG3907:
@@ -634,3 +647,25 @@ class MaskedArray(NumpyMaskedArray):
                     result._sharedmask = False
             #....
             return result
+
+if BUG4866:
+    class mvoid(Numpy_mvoid):
+        def __new__(self, data, mask=nomask, dtype=None, fill_value=None,
+                    hardmask=False):
+            _data = np.array(data, copy=False, subok=True, dtype=dtype)
+            _data = _data.view(self)
+            _data._hardmask = hardmask
+            if mask is not nomask:
+                if isinstance(mask, np.void):
+                    _data._mask = mask
+                else:
+                    try:
+                        # Mask is already a 0D array
+                        _data._mask = np.void(mask)
+                    except TypeError:
+                        # Transform the mask to a void
+                        mdtype = make_mask_descr(dtype)
+                        _data._mask = np.array(mask, dtype=mdtype)[()]
+            if fill_value is not None:
+                _data.fill_value = fill_value
+            return _data
