@@ -4,26 +4,97 @@ import numpy as np
 from distutils import version
 NUMPY_VERSION = version.LooseVersion(np.__version__)
 
-BUG3907 = NUMPY_VERSION < version.LooseVersion('9.9.9')
-BUG4576 = NUMPY_VERSION < version.LooseVersion('1.9.0')
-BUG4585 = NUMPY_VERSION < version.LooseVersion('1.9.0')
-BUG4586 = NUMPY_VERSION < version.LooseVersion('9.9.9')
+
+def PR3907(function=np.ma.getdata):
+    """If PR is present, getdata does not wrap everything in array objects.
+
+    By default, np.ma.getdata is tested
+
+    See https://github.com/numpy/numpy/pull/3907
+    """
+    # give something outrageously unlike a number
+    getdata_on_method = function(float.__mul__)
+    return not isinstance(getdata_on_method, np.ndarray)
 
 
-def BUG4866(function=np.ma.mvoid):
-    a = np.array((1., 1.), dtype=('f8,f8'))
+def PR4576(Class=np.ma.MaskedArray):
+    """If PR is present, repr interacts decently with baseclass repr.
+
+    By default, np.ma.MaskedArray is tested
+
+    See https://github.com/numpy/numpy/pull/4576
+    """
+    class SubArray(np.ndarray):
+        def __repr__(self):
+            # Return a repr that does not start with 'name('
+            return '<{0} {1}>'.format(self.__class__.__name__, self)
+
+    a = np.array([1., 2.]).view(SubArray)
+    ma = Class(a, mask=[True, False])
+    return ma.__repr__().startswith('masked_SubArray')
+
+
+def PR4585(Class=np.ma.MaskedArray):
+    """If PR is present, flat iterator getter doesn't raise AttributeError.
+
+    By default, np.ma.MaskedArray is tested
+
+    See https://github.com/numpy/numpy/pull/4585
+    """
+    ma = Class([1,2,3], mask=[0,1,0])
     try:
-        ma = function(a, mask=np.array((False, False), dtype=('b1,b1')))
-        ma['f0'] = 2.
-        return a['f0'] != 2.
-    except:
+        ma.flat[1]
+        return True
+    except AttributeError:
+        return False
+
+
+def PR4586(Class=np.ma.MaskedArray):
+    """If PR is present, baseclass setter is respected.
+
+    By default, np.ma.MaskedArray is tested
+
+    See https://github.com/numpy/numpy/pull/4586
+    """
+    class SubArray(np.ndarray):
+        def __setitem__(self, item, value):
+            # ensures direct assignment with ndarray will fail
+            if not isinstance(value, SubArray):
+                raise ValueError("Can only set to SubArray values")
+            super(SubArray, self).__setitem__(item, value)
+
+    a = np.array([1., 2.]).view(SubArray)
+    ma = Class(a, mask=[True, False])
+    try:
+        ma[1] = 1.
+        return False
+    except ValueError:
         return True
 
 
-BUGTBD = True
+def PR4866(Class=np.ma.mvoid):
+    """If PR is present, mvoid does not always copy argument.
+
+    By default, np.ma.mvoid is tested
+
+    See https://github.com/numpy/numpy/pull/4576
+    """
+    a = np.array((1., 1.), dtype=('f8,f8'))
+    try:
+        ma = Class(a, mask=np.array((False, False), dtype=('b1,b1')),
+                   copy=False, subok=True)
+        # might as well check reason this was fixed
+        ma['f0'] = 2.
+        return a['f0'] == 2.
+    except TypeError:  # unexpected argument subok
+        return False
+
+
+def PRTBD(Class=np.ma.MaskedArray):
+    return False
 
 # not essential for astropy
-# BUG4617 = NUMPY_VERSION < version.LooseVersion('9.9.9')
+# PR4617 = NUMPY_VERSION < version.LooseVersion('9.9.9')
 
 
 from functools import reduce
@@ -40,7 +111,7 @@ from numpy.ma.core import (
     mvoid as Numpy_mvoid, make_mask_descr)
 
 
-if BUG3907:
+if not PR3907():
     def getdata(a, subok=True):
         """
         Return the data of a masked array as an ndarray.
@@ -332,7 +403,7 @@ if BUG3907:
     mod = _DomainedBinaryOperation(umath.mod, _DomainSafeDivide(), 0, 1)
 
 
-if BUG4585:
+if not PR4585():
     class MaskedIterator(NumpyMaskedIterator):
         def __getitem__(self, indx):
             result = self.dataiter.__getitem__(indx).view(type(self.ma))
@@ -346,7 +417,7 @@ if BUG4585:
 
 class MaskedArray(NumpyMaskedArray):
 
-    if BUG4576:
+    if not PR4576():
         def __str__(self):
             """String representation.
 
@@ -404,7 +475,7 @@ class MaskedArray(NumpyMaskedArray):
                 return _print_templates['short_std'] % parameters
             return _print_templates['long_std'] % parameters
 
-    if BUG4586:
+    if not PR4586():
         def __getitem__(self, indx):
             """x.__getitem__(y) <==> x[y]
 
@@ -531,7 +602,7 @@ class MaskedArray(NumpyMaskedArray):
                 _mask[indx] = mindx
             return
 
-    if BUG4585:  # only to ensure we use our own MaskedIterator
+    if not PR4585():  # only to ensure we use our own MaskedIterator
         def _get_flat(self):
             "Return a flat iterator."
             return MaskedIterator(self)
@@ -544,7 +615,7 @@ class MaskedArray(NumpyMaskedArray):
         flat = property(fget=_get_flat, fset=_set_flat,
                         doc="Flat version of the array.")
 
-    if BUG3907:  # only to ensure redef's get picked up
+    if not PR3907():  # only to ensure redef's get picked up
         def __add__(self, other):
             "Add other to self, and return a new masked array."
             return add(self, other)
@@ -598,7 +669,7 @@ class MaskedArray(NumpyMaskedArray):
             return power(other, self)
         #............................................
 
-    if BUGTBD:
+    if not PRTBD():
         def __array_wrap__(self, obj, context=None):
             """
             Special hook for ufuncs.
@@ -648,7 +719,7 @@ class MaskedArray(NumpyMaskedArray):
             #....
             return result
 
-if BUG4866:
+if not PR4866():
     class mvoid(Numpy_mvoid):
         def __new__(self, data, mask=nomask, dtype=None, fill_value=None,
                     hardmask=False):
