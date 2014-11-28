@@ -38,7 +38,9 @@ NPYLT18 = LooseVersion(numpy.__version__) < LooseVersion('1.8')
 # TODO: remove the above variable and the code using it and make_outputs_scalar when numpy < 1.8 is no longer supported
 
 __all__ = ['ErfaError', 'ErfaWarning',
-           'cal2jd', 'epb', 'epb2jd', 'epj', 'epj2jd', 'jd2cal', 'jdcalf', 'ab', 'apcg', 'apcg13', 'apci', 'apci13', 'apco', 'apco13', 'apcs', 'apcs13', 'aper', 'aper13', 'apio', 'apio13', 'atci13', 'atciq', 'atciqn', 'atciqz', 'atco13', 'atic13', 'aticq', 'aticqn', 'atio13', 'atioq', 'atoc13', 'atoi13', 'atoiq', 'ld', 'ldn', 'ldsun', 'pmpx', 'pmsafe', 'refco', 'epv00', 'plan94', 'fad03', 'fae03', 'faf03', 'faju03', 'fal03', 'falp03', 'fama03', 'fame03', 'fane03', 'faom03', 'fapa03', 'fasa03', 'faur03', 'fave03', 'bi00', 'bp00', 'bp06', 'bpn2xy', 'c2i00a', 'c2i00b', 'c2i06a', 'c2ibpn', 'c2ixy', 'c2ixys', 'c2t00a', 'c2t00b', 'c2t06a', 'c2tcio', 'c2teqx', 'c2tpe', 'c2txy', 'eo06a', 'eors', 'fw2m', 'fw2xy', 'num00a', 'num00b', 'num06a', 'numat', 'nut00a', 'nut00b', 'nut06a', 'nut80', 'nutm80', 'obl06', 'obl80', 'p06e', 'pb06', 'pfw06', 'pmat00', 'pmat06', 'pmat76', 'pn00', 'pn00a', 'pn00b', 'pn06', 'pn06a', 'pnm00a', 'pnm00b', 'pnm06a', 'pnm80', 'pom00', 'pr00', 'prec76', 's00', 's00a', 's00b', 's06', 's06a', 'sp00', 'xy06', 'xys00a', 'xys00b', 'xys06a', 'ee00', 'ee00a', 'ee00b', 'ee06a', 'eect00', 'eqeq94', 'era00', 'gmst00', 'gmst06', 'gmst82', 'gst00a', 'gst00b', 'gst06', 'gst06a', 'gst94', 'pmsafe', 'pvstar', 'starpv', 'fk52h', 'fk5hip', 'fk5hz', 'h2fk5', 'hfk5z', 'starpm', 'eform', 'gc2gd', 'gc2gde', 'gd2gc', 'gd2gce', 'pvtob', 'd2dtf', 'dat', 'dtdb', 'dtf2d', 'taitt', 'taiut1', 'taiutc', 'tcbtdb', 'tcgtt', 'tdbtcb', 'tdbtt', 'tttai', 'tttcg', 'tttdb', 'ttut1', 'ut1tai', 'ut1tt', 'ut1utc', 'utctai', 'utcut1', 'dt_eraASTROM', 'dt_eraLDBODY']
+           'cal2jd', 'epb', 'epb2jd', 'epj', 'epj2jd', 'jd2cal', 'jdcalf', 'ab', 'apcg', 'apcg13', 'apci', 'apci13', 'apco', 'apco13', 'apcs', 'apcs13', 'aper', 'aper13', 'apio', 'apio13', 'atci13', 'atciq', 'atciqn', 'atciqz', 'atco13', 'atic13', 'aticq', 'aticqn', 'atio13', 'atioq', 'atoc13', 'atoi13', 'atoiq', 'ld', 'ldn', 'ldsun', 'pmpx', 'pmsafe', 'refco', 'epv00', 'plan94', 'fad03', 'fae03', 'faf03', 'faju03', 'fal03', 'falp03', 'fama03', 'fame03', 'fane03', 'faom03', 'fapa03', 'fasa03', 'faur03', 'fave03', 'bi00', 'bp00', 'bp06', 'bpn2xy', 'c2i00a', 'c2i00b', 'c2i06a', 'c2ibpn', 'c2ixy', 'c2ixys', 'c2t00a', 'c2t00b', 'c2t06a', 'c2tcio', 'c2teqx', 'c2tpe', 'c2txy', 'eo06a', 'eors', 'fw2m', 'fw2xy', 'num00a', 'num00b', 'num06a', 'numat', 'nut00a', 'nut00b', 'nut06a', 'nut80', 'nutm80', 'obl06', 'obl80', 'p06e', 'pb06', 'pfw06', 'pmat00', 'pmat06', 'pmat76', 'pn00', 'pn00a', 'pn00b', 'pn06', 'pn06a', 'pnm00a', 'pnm00b', 'pnm06a', 'pnm80', 'pom00', 'pr00', 'prec76', 's00', 's00a', 's00b', 's06', 's06a', 'sp00', 'xy06', 'xys00a', 'xys00b', 'xys06a', 'ee00', 'ee00a', 'ee00b', 'ee06a', 'eect00', 'eqeq94', 'era00', 'gmst00', 'gmst06', 'gmst82', 'gst00a', 'gst00b', 'gst06', 'gst06a', 'gst94', 'pmsafe', 'pvstar', 'starpv', 'fk52h', 'fk5hip', 'fk5hz', 'h2fk5', 'hfk5z', 'starpm', 'eform', 'gc2gd', 'gc2gde', 'gd2gc', 'gd2gce', 'pvtob', 'd2dtf', 'dat', 'dtdb', 'dtf2d', 'taitt', 'taiut1', 'taiutc', 'tcbtdb', 'tcgtt', 'tdbtcb', 'tdbtt', 'tttai', 'tttcg', 'tttdb', 'ttut1', 'ut1tai', 'ut1tt', 'ut1utc', 'utctai', 'utcut1',
+           'DPI', 'D2PI', 'DR2D', 'DD2R', 'DR2AS', 'DAS2R', 'DS2R', 'TURNAS', 'DMAS2R', 'DTY', 'DAYSEC', 'DJY', 'DJC', 'DJM', 'DJ00', 'DJM0', 'DJM00', 'DJM77', 'TTMTAI', 'DAU', 'CMPS', 'AULT', 'DC', 'ELG', 'ELB', 'TDB0', 'SRS', 'WGS84', 'GRS80', 'WGS72',
+           'dt_eraASTROM', 'dt_eraLDBODY']
 
 
 #<---------------------------------Error-handling----------------------------->
@@ -129,6 +131,37 @@ dt_eraLDBODY = numpy.dtype([('bm','d'),
                          ('pv','d',(2,3))], align=True)
 
 
+
+DPI = (3.141592653589793238462643)
+D2PI = (6.283185307179586476925287)
+DR2D = (57.29577951308232087679815)
+DD2R = (1.745329251994329576923691e-2)
+DR2AS = (206264.8062470963551564734)
+DAS2R = (4.848136811095359935899141e-6)
+DS2R = (7.272205216643039903848712e-5)
+TURNAS = (1296000.0)
+DMAS2R = (DAS2R / 1e3)
+DTY = (365.242198781)
+DAYSEC = (86400.0)
+DJY = (365.25)
+DJC = (36525.0)
+DJM = (365250.0)
+DJ00 = (2451545.0)
+DJM0 = (2400000.5)
+DJM00 = (51544.5)
+DJM77 = (43144.0)
+TTMTAI = (32.184)
+DAU = (149597870e3)
+CMPS = 299792458.0
+AULT = 499.004782
+DC = (DAYSEC / AULT)
+ELG = (6.969290134e-10)
+ELB = (1.550519768e-8)
+TDB0 = (-6.55e-5)
+SRS = 1.97412574336e-8
+WGS84 = 1
+GRS80 = 2
+WGS72 = 3
 
 
 def cal2jd(iy, im, id):
