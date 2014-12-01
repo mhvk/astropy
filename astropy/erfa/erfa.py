@@ -132,36 +132,36 @@ dt_eraLDBODY = numpy.dtype([('bm','d'),
 
 
 
-DPI = (3.141592653589793238462643)
-D2PI = (6.283185307179586476925287)
-DR2D = (57.29577951308232087679815)
-DD2R = (1.745329251994329576923691e-2)
-DR2AS = (206264.8062470963551564734)
-DAS2R = (4.848136811095359935899141e-6)
-DS2R = (7.272205216643039903848712e-5)
-TURNAS = (1296000.0)
-DMAS2R = (DAS2R / 1e3)
-DTY = (365.242198781)
-DAYSEC = (86400.0)
-DJY = (365.25)
-DJC = (36525.0)
-DJM = (365250.0)
-DJ00 = (2451545.0)
-DJM0 = (2400000.5)
-DJM00 = (51544.5)
-DJM77 = (43144.0)
-TTMTAI = (32.184)
-DAU = (149597870e3)
-CMPS = 299792458.0
-AULT = 499.004782
-DC = (DAYSEC / AULT)
-ELG = (6.969290134e-10)
-ELB = (1.550519768e-8)
-TDB0 = (-6.55e-5)
-SRS = 1.97412574336e-8
-WGS84 = 1
-GRS80 = 2
-WGS72 = 3
+DPI = (3.141592653589793238462643) #Pi
+D2PI = (6.283185307179586476925287) #2Pi
+DR2D = (57.29577951308232087679815) #Radians to degrees
+DD2R = (1.745329251994329576923691e-2) #Degrees to radians
+DR2AS = (206264.8062470963551564734) #Radians to arcseconds
+DAS2R = (4.848136811095359935899141e-6) #Arcseconds to radians
+DS2R = (7.272205216643039903848712e-5) #Seconds of time to radians
+TURNAS = (1296000.0) #Arcseconds in a full circle
+DMAS2R = (DAS2R / 1e3) #Milliarcseconds to radians
+DTY = (365.242198781) #Length of tropical year B1900 (days)
+DAYSEC = (86400.0) #Seconds per day.
+DJY = (365.25) #Days per Julian year
+DJC = (36525.0) #Days per Julian century
+DJM = (365250.0) #Days per Julian millennium
+DJ00 = (2451545.0) #Reference epoch (J2000.0), Julian Date
+DJM0 = (2400000.5) #Julian Date of Modified Julian Date zero
+DJM00 = (51544.5) #Reference epoch (J2000.0), Modified Julian Date
+DJM77 = (43144.0) #1977 Jan 1.0 as MJD
+TTMTAI = (32.184) #TT minus TAI (s)
+DAU = (149597870e3) #Astronomical unit (m)
+CMPS = 299792458.0 #Speed of light (m/s)
+AULT = 499.004782 #Light time for 1 au (s)
+DC = (DAYSEC / AULT) #Speed of light (AU per day)
+ELG = (6.969290134e-10) #L_G = 1 - d(TT)/d(TCG)
+ELB = (1.550519768e-8) #L_B = 1 - d(TDB)/d(TCB), and TDB (s) at TAI 1977/1/1.0
+TDB0 = (-6.55e-5) #L_B = 1 - d(TDB)/d(TCB), and TDB (s) at TAI 1977/1/1.0
+SRS = 1.97412574336e-8 #Schwarzschild radius of the Sun (au) = 2 * 1.32712440041e20 / (2.99792458e8)^2 / 1.49597870700e11
+WGS84 = 1 #Reference ellipsoids
+GRS80 = 2 #Reference ellipsoids
+WGS72 = 3 #Reference ellipsoids
 
 
 def cal2jd(iy, im, id):
