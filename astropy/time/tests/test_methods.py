@@ -246,11 +246,46 @@ class TestManipulation():
 
 class TestArithmetic():
     """Arithmetic on Time objects, using both doubles."""
+    kwargs = ({}, {'axis': None}, {'axis': 0}, {'axis': 1}, {'axis': 2})
+    funcs = ('min', 'max', 'sort')
+    params = [[kwarg, func] for kwarg in kwargs for func in funcs]
 
     def setup(self):
-        mjd = np.arange(50000, 50010)
+        mjd = np.arange(50000, 50100, 10).reshape(2, 5, 1)
         frac = np.array([0.1, 0.1+1.e-15, 0.1-1.e-15, 0.9+2.e-16, 0.9])
-        self.t0 = Time(mjd.reshape(2, 5, 1), frac, format='mjd', scale='utc')
+        self.t0 = Time(mjd, frac, format='mjd', scale='utc')
+
+        # Define arrays with same ordinal properties
+        frac = np.array([1, 2, 0, 4, 3])
+        self.t1 = Time(mjd + frac, format='mjd', scale='utc')
+        self.jd = mjd + frac
+
+    @pytest.mark.parametrize(('kw,func'), params)
+    def test_argfuncs(self, kw, func):
+        """
+        Test that np.argfunc(jd, **kw) is the same as t0.argfunc(**kw) where
+        jd is a similarly shaped array with the same ordinal properties but
+        all integer values.  Also test the same for t1 which has the same
+        integral values as jd.
+        """
+        t0v = getattr(self.t0, 'arg' + func)(**kw)
+        t1v = getattr(self.t1, 'arg' + func)(**kw)
+        jdv = getattr(np, 'arg' + func)(self.jd, **kw)
+        assert np.all(t0v == jdv)
+        assert np.all(t1v == jdv)
+        assert t0v.shape == jdv.shape
+        assert t1v.shape == jdv.shape
+
+    @pytest.mark.parametrize(('kw,func'), params)
+    def test_funcs(self, kw, func):
+        """
+        Test that np.func(jd, **kw) is the same as t1.func(**kw) where
+        jd is a similarly shaped array and the same integral values.
+        """
+        t1v = getattr(self.t1, func)(**kw)
+        jdv = getattr(np, func)(self.jd, **kw)
+        assert np.all(t1v.value == jdv)
+        assert t1v.shape == jdv.shape
 
     def test_argmin(self):
         assert self.t0.argmin() == 2
