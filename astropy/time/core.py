@@ -931,15 +931,14 @@ class Time(object):
         that the full precision given by the two doubles ``jd1`` and ``jd2``
         is used.  See :func:`~numpy.argmin` for detailed documentation.
         """
-        jd = self.jd1 + self.jd2
         if NUMPY_LT_1_7:
-            guess = jd.min(axis)
+            min_jd1 = self.jd1.min(axis)
             if axis is not None:
-                guess = np.expand_dims(guess, axis)
+                min_jd1 = np.expand_dims(min_jd1, axis)
         else:
-            guess = jd.min(axis, keepdims=True)
+            min_jd1 = self.jd1.min(axis, keepdims=True)
 
-        dt = (self.jd1 - guess) + self.jd2
+        dt = (self.jd1 - min_jd1) + self.jd2
         return dt.argmin(axis, out)
 
     def argmax(self, axis=None, out=None):
@@ -949,15 +948,14 @@ class Time(object):
         that the full precision given by the two doubles ``jd1`` and ``jd2``
         is used.  See :func:`~numpy.argmax` for detailed documentation.
         """
-        jd = self.jd1 + self.jd2
         if NUMPY_LT_1_7:
-            guess = jd.max(axis)
+            max_jd1 = self.jd1.max(axis)
             if axis is not None:
-                guess = np.expand_dims(guess, axis)
+                max_jd1 = np.expand_dims(max_jd1, axis)
         else:
-            guess = jd.max(axis, keepdims=True)
+            max_jd1 = self.jd1.max(axis, keepdims=True)
 
-        dt = (self.jd1 - guess) + self.jd2
+        dt = (self.jd1 - max_jd1) + self.jd2
         return dt.argmax(axis, out)
 
     def argsort(self, axis=-1):
