@@ -54,7 +54,7 @@ class AstropyOutputChecker(doctest.OutputChecker):
 
         exp = r'(?:e[+-]?\d+)'
 
-        got_floats = r'(\d+\.\d*%s?|\.\d+%s?|\d+%s)' % (exp, exp, exp)
+        got_floats = r'([+-]?\d+\.\d*%s?|[+-]?\.\d+%s?|[+-]?\d+%s)' % (exp, exp, exp)
 
         # floats in the 'want' string may contain ellipses
         want_floats = got_floats + r'(\.{3})?'
