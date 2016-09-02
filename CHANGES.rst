@@ -20,6 +20,11 @@ New Features
     For JPL kernels, this roughly doubles the execution time, so if one requires
     only the positions, one should use ``get_body_barycentric``. [#5231]
 
+  - Arithmetic on representations, such as addition of two representations,
+    multiplication with a ``Quantity``, or calculating the norm via ``abs``,
+    has now become possible. Furthermore, there are news methods ``mean``,
+    ``sum``, ``dot``, and ``cross`` with obvious meaning. [#5301]
+
 - ``astropy.cosmology``
 
 - ``astropy.io.ascii``
