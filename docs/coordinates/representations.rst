@@ -5,11 +5,14 @@
 Using and Designing Coordinate Representations
 ----------------------------------------------
 
-As described in the :ref:`astropy-coordinates-overview`, the actual coordinate
-data in `astropy.coordinates` frames is represented via
-"Representation classes". These can be used to store 3-d coordinates in
-various representations, such as cartesian, spherical polar, cylindrical, and
-so on. The built-in representation classes are:
+Points in a 3-d vector space can be represented in different ways, such as
+cartesian, spherical polar, cylindrical, and so on. These underlie the way
+coordinate data in `astropy.coordinates` is represented, as described in the
+:ref:`astropy-coordinates-overview`. Below, we describe how one can use them on
+their own, as a way to convert between different representations, including
+ones not built-in, and to do simple vector arithmetic.
+
+The built-in representation classes are:
 
 * `~astropy.coordinates.CartesianRepresentation`: cartesian
   coordinates ``x``, ``y``, and ``z``
@@ -38,7 +41,7 @@ so on. The built-in representation classes are:
 Instantiating and converting
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Representation classes should be instantiated with `~astropy.units.Quantity`
+Representation classes are instantiated with `~astropy.units.Quantity`
 objects::
 
     >>> from astropy import units as u
@@ -47,6 +50,26 @@ objects::
     >>> car
     <CartesianRepresentation (x, y, z) in kpc
         (3.0, 5.0, 4.0)>
+
+Array `~astropy.units.Quantity` objects can also be passed to
+representations. They will have the expected shape, which can be changed using
+methods with the same names as those for `~numpy.ndarray`, such as ``reshape``,
+``ravel``, etc.::
+
+  >>> x = u.Quantity([[1., 0., 0.], [3., 5., 3.]], u.m)
+  >>> y = u.Quantity([[0., 2., 0.], [4., 0., -4.]], u.m)
+  >>> z = u.Quantity([[0., 0., 3.], [0., 12., -12.]], u.m)
+  >>> car_array = CartesianRepresentation(x, y, z)
+  >>> car_array
+  <CartesianRepresentation (x, y, z) in m
+      [[(1.0, 0.0, 0.0), (0.0, 2.0, 0.0), (0.0, 0.0, 3.0)],
+       [(3.0, 4.0, 0.0), (5.0, 0.0, 12.0), (3.0, -4.0, -12.0)]]>
+  >>> car_array.shape
+  (2, 3)
+  >>> car_array.ravel()
+  <CartesianRepresentation (x, y, z) in m
+      [(1.0, 0.0, 0.0), (0.0, 2.0, 0.0), (0.0, 0.0, 3.0), (3.0, 4.0, 0.0),
+       (5.0, 0.0, 12.0), (3.0, -4.0, -12.0)]>
 
 Representations can be converted to other representations using the
 ``represent_as`` method::
@@ -130,11 +153,6 @@ To create your own representation class, your class must inherit from the
 
   Returns a `~astropy.coordinates.CartesianRepresentation` object.
 
-* ``components`` property:
-
-  Returns a tuple of the names of the coordinate components (such as ``x``,
-  ``lon``, and so on).
-
 * ``attr_classes`` class attribute (``OrderedDict``):
 
   Defines the initializer class for each component.In most cases this
@@ -176,10 +194,6 @@ In pseudo-code, this means that your class will look like::
             ...
             return CartesianRepresentation(...)
 
-        @property
-        def components(self):
-            return 'comp1', 'comp2', 'comp3'
-
 Once you do this, you will then automatically be able to call
 ``represent_as`` to convert other representations to/from your representation
 class.  Your representation will also be available for use in |skycoord|
@@ -191,3 +205,73 @@ A representation class may also have a ``_unit_representation`` attribute
 probably only meaningful for subclasses of
 `~astropy.coordinates.SphericalRepresentation`, where it is assumed that it
 will be a subclass of `~astropy.coordinates.UnitSphericalRepresentation`.
+
+
+Vector arithmetic
+^^^^^^^^^^^^^^^^^
+
+Representations support basic vector arithmetic, in particular taking the
+absolute value (i.e., getting the norm), multiplying with and dividing by
+quantities, taking dot and cross products, as well as adding, subtracting,
+summing and taking averages of representations, and multiplying with matrices.
+These are perhaps best seen from the following examples::
+
+  >>> car_array = CartesianRepresentation([[1., 0., 0.], [3., 5.,  3.]] * u.m,
+  ...                                     [[0., 2., 0.], [4., 0., -4.]] * u.m,
+  ...                                     [[0., 0., 3.], [0.,12.,-12.]] * u.m)
+  >>> car_array
+  <CartesianRepresentation (x, y, z) in m
+      [[(1.0, 0.0, 0.0), (0.0, 2.0, 0.0), (0.0, 0.0, 3.0)],
+       [(3.0, 4.0, 0.0), (5.0, 0.0, 12.0), (3.0, -4.0, -12.0)]]>
+  >>> abs(car_array)  # doctest: +FLOAT_CMP
+  <Quantity [[  1.,  2.,  3.],
+             [  5., 13., 13.]] m>
+  >>> car_array / abs(car_array)  # doctest: +FLOAT_CMP
+  <CartesianRepresentation (x, y, z) [dimensionless]
+      [[(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)],
+       [(0.6, 0.8, 0.0), (0.38461538, 0.0, 0.92307692),
+        (0.23076923, -0.30769231, -0.92307692)]]>
+  >>> (car_array[1] - car_array[0]) / (10. * u.s)  # doctest: +FLOAT_CMP
+  <CartesianRepresentation (x, y, z) in m / s
+      [(0.2, 0.4, 0.0), (0.5, -0.2, 1.2), (0.3, -0.4, -1.5)]>
+  >>> car_array.mean(axis=0)  # doctest: +FLOAT_CMP
+  <CartesianRepresentation (x, y, z) in m
+      [(2.0, 2.0, 0.0), (2.5, 1.0, 6.0), (1.5, -2.0, -4.5)]>
+  >>> car_array.sum()  # doctest: +FLOAT_CMP
+  <CartesianRepresentation (x, y, z) in m
+      (12.0, 2.0, 3.0)>
+      
+  >>> unit_x = UnitSphericalRepresentation(0.*u.deg, 0.*u.deg)
+  >>> unit_y = UnitSphericalRepresentation(90.*u.deg, 0.*u.deg)
+  >>> unit_z = UnitSphericalRepresentation(0.*u.deg, 90.*u.deg)
+  >>> car_array.dot(unit_x)  # doctest: +FLOAT_CMP
+  <Quantity [[ 1., 0., 0.],
+             [ 3., 5., 3.]] m>
+  >>> car_array.dot(unit_y)  # doctest: +FLOAT_CMP
+  <Quantity [[  6.12323400e-17,  2.00000000e+00,  0.00000000e+00],
+             [  4.00000000e+00,  3.06161700e-16, -4.00000000e+00]] m>
+  >>> car_array.dot(unit_z)  # doctest: +FLOAT_CMP
+  <Quantity [[  6.12323400e-17,  0.00000000e+00,  3.00000000e+00],
+             [  1.83697020e-16,  1.20000000e+01, -1.20000000e+01]] m>
+  >>> car_array.cross(unit_x)  # doctest: +FLOAT_CMP
+  <CartesianRepresentation (x, y, z) in m
+      [[(0.0, 0.0, 0.0), (0.0, 0.0, -2.0), (0.0, 3.0, 0.0)],
+       [(0.0, 0.0, -4.0), (0.0, 12.0, 0.0), (0.0, -12.0, 4.0)]]>
+
+  >>> from astropy.coordinates.matrix_utilities import rotation_matrix
+  >>> rotation = rotation_matrix(90 * u.deg, axis='z')
+  >>> rotation  # doctest: +FLOAT_CMP
+  array([[  6.12323400e-17,   1.00000000e+00,   0.00000000e+00],
+         [ -1.00000000e+00,   6.12323400e-17,   0.00000000e+00],
+         [  0.00000000e+00,   0.00000000e+00,   1.00000000e+00]])
+  >>> car_array.transform(rotation)  # doctest: +FLOAT_CMP
+  <CartesianRepresentation (x, y, z) in m
+      [[(0.0, -1.0, 0.0), (2.0, 0.0, 0.0), (0.0, 0.0, 3.0)],
+       [(4.0, -3.0, 0.0), (0.0, -5.0, 12.0), (-4.0, -3.0, -12.0)]]>
+
+Note that all arithmetic except the matrix multiplication works with
+non-cartesian representations as well.  For operations other than taking the
+absolute value, multiplication, and division, this involves converting the
+representations to cartesian internally, and then converting the result back to
+the original representation.  Hence, for optimal speed it may be best to work
+using cartesian representations.
