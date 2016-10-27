@@ -7,7 +7,7 @@ import numpy as np
 from ... import units as u
 from .. import (PhysicsSphericalRepresentation, CartesianRepresentation,
                 CylindricalRepresentation, SphericalRepresentation,
-                UnitSphericalRepresentation, Longitude, Latitude)
+                UnitSphericalRepresentation, Longitude, Latitude, Distance)
 from ..angle_utilities import angular_separation
 from ...tests.helper import pytest, assert_quantity_allclose
 
@@ -31,9 +31,10 @@ class TestArithmetic():
     def setup(self):
         # Choose some specific coordinates, for which ``sum`` and ``dot``
         # works out nicely.
-        self.lon = Longitude(np.arange(0, 12.1, 2), u.hourangle)
-        self.lat = Latitude(np.arange(-90, 91, 30), u.deg)
-        self.distance = [5., 12., 4., 2., 4., 12., 5.] * u.kpc
+        # Also have the shape be at least 2d to make sure everythink works in n-d
+        self.lon = Longitude([np.arange(0, 12.1, 2)]*4, u.hourangle)
+        self.lat = Latitude([np.arange(-90, 91, 30)]*4, u.deg)
+        self.distance = u.Quantity([[5., 12., 4., 2., 4., 12., 5.] * u.kpc]*4)
         self.spherical = SphericalRepresentation(self.lon, self.lat,
                                                  self.distance)
         self.unit_spherical = self.spherical.represent_as(
@@ -349,3 +350,20 @@ class TestArithmetic():
         expected = np.sin(sep)
         assert_quantity_allclose(abs(u_cross_u_rev), expected,
                                  atol=1.e-10*u.one)
+
+    def test_abs_consistency(self):
+        """
+        Taking the norm of representations should always yield a Distance. Incorrect
+        implementations sometimes yield object arrays or raw quantities.
+        """
+        sabs = np.abs(self.spherical)
+        cabs = np.abs(self.cartesian)
+
+        assert sabs.dtype != np.dtype(object)
+        assert cabs.dtype != np.dtype(object)
+
+        assert isinstance(sabs[0], Distance)
+        assert isinstance(cabs[0], Distance)
+
+        assert isinstance(sabs, Distance)
+        assert isinstance(cabs, Distance)
