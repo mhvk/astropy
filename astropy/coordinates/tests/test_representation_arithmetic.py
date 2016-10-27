@@ -31,9 +31,10 @@ class TestArithmetic():
     def setup(self):
         # Choose some specific coordinates, for which ``sum`` and ``dot``
         # works out nicely.
-        self.lon = Longitude(np.arange(0, 12.1, 2), u.hourangle)
-        self.lat = Latitude(np.arange(-90, 91, 30), u.deg)
-        self.distance = [5., 12., 4., 2., 4., 12., 5.] * u.kpc
+        # Also have the shape be at least 2d to make sure everythink works in n-d
+        self.lon = Longitude([np.arange(0, 12.1, 2)]*4, u.hourangle)
+        self.lat = Latitude([np.arange(-90, 91, 30)]*4, u.deg)
+        self.distance = u.Quantity([[5., 12., 4., 2., 4., 12., 5.] * u.kpc]*4)
         self.spherical = SphericalRepresentation(self.lon, self.lat,
                                                  self.distance)
         self.unit_spherical = self.spherical.represent_as(
