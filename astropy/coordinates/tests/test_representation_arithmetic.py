@@ -7,7 +7,7 @@ import numpy as np
 from ... import units as u
 from .. import (PhysicsSphericalRepresentation, CartesianRepresentation,
                 CylindricalRepresentation, SphericalRepresentation,
-                UnitSphericalRepresentation, Longitude, Latitude)
+                UnitSphericalRepresentation, Longitude, Latitude, Distance)
 from ..angle_utilities import angular_separation
 from ...tests.helper import pytest, assert_quantity_allclose
 
@@ -349,3 +349,20 @@ class TestArithmetic():
         expected = np.sin(sep)
         assert_quantity_allclose(abs(u_cross_u_rev), expected,
                                  atol=1.e-10*u.one)
+
+    def test_abs_consistency(self):
+        """
+        Taking the norm of representations should always yield a Distance. Incorrect
+        implementations sometimes yield object arrays or raw quantities.
+        """
+        sabs = np.abs(self.spherical)
+        cabs = np.abs(self.cartesian)
+
+        assert sabs.dtype != np.dtype(object)
+        assert cabs.dtype != np.dtype(object)
+
+        assert isinstance(sabs[0], Distance)
+        assert isinstance(cabs[0], Distance)
+
+        assert isinstance(sabs, Distance)
+        assert isinstance(cabs, Distance)
