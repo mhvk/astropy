@@ -5,24 +5,12 @@ from distutils import version
 NUMPY_VERSION = version.LooseVersion(np.__version__)
 
 
-def PR3907(function=np.ma.getdata):
-    """If PR is present, getdata does not wrap everything in array objects.
-
-    By default, np.ma.getdata is tested
-
-    See https://github.com/numpy/numpy/pull/3907
-    """
-    # give something outrageously unlike a number
-    getdata_on_method = function(float.__mul__)
-    return not isinstance(getdata_on_method, np.ndarray)
-
-
 def PR4576(Class=np.ma.MaskedArray):
     """If PR is present, repr interacts decently with baseclass repr.
 
     By default, np.ma.MaskedArray is tested
 
-    See https://github.com/numpy/numpy/pull/4576
+    See https://github.com/numpy/numpy/pull/4576 (which went in 1.9.0)
     """
     class SubArray(np.ndarray):
         def __repr__(self):
@@ -39,7 +27,7 @@ def PR4585(Class=np.ma.MaskedArray):
 
     By default, np.ma.MaskedArray is tested
 
-    See https://github.com/numpy/numpy/pull/4585
+    See https://github.com/numpy/numpy/pull/4585 (which went in 1.9.0)
     """
     ma = Class([1,2,3], mask=[0,1,0])
     try:
@@ -54,7 +42,7 @@ def PR4586(Class=np.ma.MaskedArray):
 
     By default, np.ma.MaskedArray is tested
 
-    See https://github.com/numpy/numpy/pull/4586
+    See https://github.com/numpy/numpy/pull/4586 (which went in 1.10.0)
     """
     class SubArray(np.ndarray):
         def __setitem__(self, item, value):
@@ -77,11 +65,11 @@ def PR4866(Class=np.ma.mvoid):
 
     By default, np.ma.mvoid is tested
 
-    See https://github.com/numpy/numpy/pull/4576
+    See https://github.com/numpy/numpy/pull/4576 (which went in 1.9.0)
     """
     a = np.array((1., 1.), dtype=('f8,f8'))
     try:
-        ma = Class(a, mask=[(False, False)], copy=False, subok=True)
+        ma = Class(a, copy=False, subok=True)
         # might as well check reason this was fixed
         ma['f0'] = 2.
         return a['f0'] == 2.
@@ -91,6 +79,16 @@ def PR4866(Class=np.ma.mvoid):
 
 def PRTBD(Class=np.ma.MaskedArray):
     return False
+
+def PRTBD2(function=np.ma.getdata):
+    """If PR is present, getdata does not wrap everything in array objects.
+
+    By default, np.ma.getdata is tested
+    """
+    # give something outrageously unlike a number
+    getdata_on_method = function(float.__mul__)
+    return not isinstance(getdata_on_method, np.ndarray)
+
 
 # not essential for astropy
 # PR4617 = NUMPY_VERSION < version.LooseVersion('9.9.9')
@@ -110,7 +108,7 @@ from numpy.ma.core import (
     mvoid as Numpy_mvoid, make_mask_descr)
 
 
-if not PR3907():
+if not PRTBD2():
     def getdata(a, subok=True):
         """
         Return the data of a masked array as an ndarray.
@@ -223,8 +221,9 @@ if not PR3907():
             mask = make_mask_none(np.shape(arr), getattr(arr, 'dtype', None))
         return mask
 
+    # These were actually part of https://github.com/numpy/numpy/pull/3907
+    # but need to be redefined since they use getdata.
     class _MaskedBinaryOperation(Numpy_MaskedBinaryOperation):
-        # https://github.com/numpy/numpy/pull/3907
         def __call__(self, a, b, *args, **kwargs):
             "Execute the call behavior."
             # Get the data, as ndarray
@@ -642,7 +641,7 @@ class MaskedArray(NumpyMaskedArray):
         flat = property(fget=_get_flat, fset=_set_flat,
                         doc="Flat version of the array.")
 
-    if not PR3907():  # only to ensure redef's get picked up
+    if not PRTBD2():  # only to ensure redef's get picked up
         def __add__(self, other):
             "Add other to self, and return a new masked array."
             return add(self, other)

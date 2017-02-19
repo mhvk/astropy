@@ -1,12 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+import pytest
 import numpy as np
 from numpy.ma import masked
 from ..ma import MaskedArray
 
-from ....tests.helper import pytest
-from ....units import Quantity
-from ....coordinates import Angle, Longitude, Distance
-from .... import units as u
+from .....units import Quantity
+from .....coordinates import Angle, Longitude, Distance
+from ..... import units as u
 
 
 @pytest.fixture(scope='module', params=[Quantity, Distance, Longitude])

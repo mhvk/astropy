@@ -6,26 +6,24 @@ Test broadcast_arrays replacement on Quantity class.
 from __future__ import (absolute_import, unicode_literals, division,
                         print_function)
 
+import pytest
 import numpy as np
 
-from astropy.tests.helper import pytest
-from ..ma import (getdata, PR3907,
-                  MaskedArray, PR4576, PR4585, PR4586,
+from ..ma import (MaskedArray, PR4576, PR4585, PR4586,
                   mvoid, PR4866)
-#                  PRTBD)
+#                  PRTBD, PRTBD2)
 
 
 def test_import():
     """Check that what is imported from code is what we are testing."""
     from ... import numpy as anp
-    assert anp.ma.getdata is getdata
     assert anp.ma.MaskedArray is MaskedArray
     assert anp.ma.mvoid is mvoid
+    # assert anp.ma.getdata is getdata
 
 
 @pytest.mark.parametrize(('item', 'pr'),
-                         ((getdata, PR3907),
-                          (MaskedArray, PR4576),
+                         ((MaskedArray, PR4576),
                           (MaskedArray, PR4585),
                           (MaskedArray, PR4586),
                           (mvoid, PR4866)))
