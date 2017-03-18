@@ -307,9 +307,8 @@ def test_coord_init_representation():
     assert allclose(sc_cart.z, 3.0)
 
 
-FRAME_DEPRECATION_WARNING = ("Passing a frame as a positional argument is now "
-                             "deprecated, use the frame= keyword argument "
-                             "instead.")
+FRAME_DEPRECATION_WARNING = ("Passing a frame as a positional argument is "
+                             "deprecated")
 
 def test_frame_init():
     """
@@ -326,25 +325,25 @@ def test_frame_init():
         sc = SkyCoord(RA, DEC, 'icrs')
     assert sc.frame.name == 'icrs'
     assert len(w) == 1
-    assert str(w[0].message) == FRAME_DEPRECATION_WARNING
+    assert str(w[0].message).startswith(FRAME_DEPRECATION_WARNING)
 
     with catch_warnings(AstropyDeprecationWarning) as w:
         sc = SkyCoord(RA, DEC, ICRS)
     assert sc.frame.name == 'icrs'
     assert len(w) == 1
-    assert str(w[0].message) == FRAME_DEPRECATION_WARNING
+    assert str(w[0].message).startswith(FRAME_DEPRECATION_WARNING)
 
     with catch_warnings(AstropyDeprecationWarning) as w:
         sc = SkyCoord('icrs', RA, DEC)
     assert sc.frame.name == 'icrs'
     assert len(w) == 1
-    assert str(w[0].message) == FRAME_DEPRECATION_WARNING
+    assert str(w[0].message).startswith(FRAME_DEPRECATION_WARNING)
 
     with catch_warnings(AstropyDeprecationWarning) as w:
         sc = SkyCoord(ICRS, RA, DEC)
     assert sc.frame.name == 'icrs'
     assert len(w) == 1
-    assert str(w[0].message) == FRAME_DEPRECATION_WARNING
+    assert str(w[0].message).startswith(FRAME_DEPRECATION_WARNING)
 
     sc = SkyCoord(sc)
     assert sc.frame.name == 'icrs'

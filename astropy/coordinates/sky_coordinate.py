@@ -427,29 +427,29 @@ class SkyCoord(ShapedLikeNDArray):
         if isinstance(frame, SkyCoord):
             frame = frame.frame  # Change to underlying coord frame instance
 
-        if isinstance(frame, BaseCoordinateFrame):
-            new_frame_cls = frame.__class__
-            # Get frame attributes, allowing defaults to be overridden by
-            # explicitly set attributes of the source if ``merge_attributes``.
-            for attr in frame_transform_graph.frame_attributes:
-                self_val = getattr(self, attr, None)
-                frame_val = getattr(frame, attr, None)
-                if (frame_val is not None and not
-                    (merge_attributes and frame.is_frame_attr_default(attr))):
-                    frame_kwargs[attr] = frame_val
-                elif (self_val is not None and
-                      not self.is_frame_attr_default(attr)):
-                    frame_kwargs[attr] = self_val
-                elif frame_val is not None:
-                    frame_kwargs[attr] = frame_val
-        else:
+        if not isinstance(frame, BaseCoordinateFrame):
             raise ValueError('Transform `frame` must be a frame name, class, or instance')
 
         # Get the composite transform to the new frame
-        trans = frame_transform_graph.get_transform(self.frame.__class__, new_frame_cls)
+        trans = frame_transform_graph.get_transform(self.frame.__class__,
+                                                    frame.__class__)
         if trans is None:
             raise ConvertError('Cannot transform from {0} to {1}'
-                               .format(self.frame.__class__, new_frame_cls))
+                               .format(self.frame.__class__, frame.__class__))
+
+        # Get new frame attributes, allowing defaults to be overridden by
+        # explicitly set attributes of the source if ``merge_attributes``.
+        for attr in frame_transform_graph.frame_attributes:
+            self_val = getattr(self, attr, None)
+            frame_val = getattr(frame, attr, None)
+            if (frame_val is not None and not
+                (merge_attributes and frame.is_frame_attr_default(attr))):
+                frame_kwargs[attr] = frame_val
+            elif (self_val is not None and
+                  not self.is_frame_attr_default(attr)):
+                frame_kwargs[attr] = self_val
+            elif frame_val is not None:
+                frame_kwargs[attr] = frame_val
 
         # Make a generic frame which will accept all the frame kwargs that
         # are provided and allow for transforming through intermediate frames
@@ -478,11 +478,11 @@ class SkyCoord(ShapedLikeNDArray):
             # Anything in the set of all possible frame_attr_names is handled
             # here. If the attr is relevant for the current frame then delegate
             # to self.frame otherwise get it from self._<attr>.
+            if attr in self.frame.get_frame_attr_names():
+                return getattr(self.frame, attr)
+
             if attr in frame_transform_graph.frame_attributes:
-                if attr in self.frame.get_frame_attr_names():
-                    return getattr(self.frame, attr)
-                else:
-                    return getattr(self, '_' + attr, None)
+                return getattr(self, '_' + attr, None)
 
             # Some attributes might not fall in the above category but still
             # are available through self._sky_coord_frame.
@@ -1263,9 +1263,7 @@ class SkyCoord(ShapedLikeNDArray):
         newsc : same as this class
             The new `SkyCoord` (or subclass) object.
         """
-        inital_frame = coord_kwargs.get('frame')
         frame = _get_frame([], coord_kwargs)
-        coord_kwargs['frame'] = inital_frame
 
         comp_kwargs = {}
         for comp_name in frame.representation_component_names:
@@ -1298,7 +1296,7 @@ class SkyCoord(ShapedLikeNDArray):
             else:
                 coord_kwargs[k] = v
 
-        return cls(**coord_kwargs)
+        return cls(frame=frame, **coord_kwargs)
 
     # Name resolve
     @classmethod
@@ -1372,84 +1370,90 @@ def _get_frame(args, kwargs):
     non-default representation attributes which would require a three-way merge.
     """
     frame = kwargs.pop('frame', None)
-
-    if frame is None and len(args) > 1:
-
-        # We do not allow frames to be passed as positional arguments if data
-        # is passed separately from frame.
-
-        for arg in args:
-
-            if isinstance(arg, (SkyCoord, BaseCoordinateFrame)):
-                raise ValueError("{0} instance cannot be passed as a positional "
-                                 "argument for the frame, pass it using the "
-                                 "frame= keyword instead.".format(arg.__class__.__name__))
-
-    # If the frame is an instance or SkyCoord, we split up the attributes and
-    # make it into a class.
-
-    if isinstance(frame, SkyCoord):
-        # Copy any extra attributes if they are not explicitly given.
-        for attr in frame._extra_attr_names:
-            kwargs.setdefault(attr, getattr(frame, attr))
-        frame = frame.frame
-
-    if isinstance(frame, BaseCoordinateFrame):
-
-        for attr in frame.get_frame_attr_names():
-            if attr in kwargs:
-                raise ValueError("cannot specify frame attribute '{0}' directly in SkyCoord since a frame instance was passed in".format(attr))
-            else:
-                kwargs[attr] = getattr(frame, attr)
-
-        frame = frame.__class__
-
     if frame is not None:
-        # Frame was provided as kwarg so validate and coerce into corresponding frame.
-        frame_cls = _get_frame_class(frame)
-        frame_specified_explicitly = True
+        if isinstance(frame, SkyCoord):
+            frame_cls = frame.frame.__class__
+        elif isinstance(frame, BaseCoordinateFrame):
+            frame_cls = frame.__class__
+        else:
+            # Validate it as either BaseCoordinateFrame subclass or string.
+            frame_cls = _get_frame_class(frame)
+            frame = None
     else:
-        # Look for the frame in args
+        frame_cls = None
+        # Look for the frame in args; DEPRECATED; this can be removed in astropy 2.1.
         for arg in args:
             try:
                 frame_cls = _get_frame_class(arg)
-                frame_specified_explicitly = True
             except ValueError:
-                pass
+                continue
             else:
+                warnings.warn("Passing a frame as a positional argument is "
+                              "deprecated, and will be removed in astropy 2.1. "
+                              "Use the frame= keyword argument instead.",
+                              AstropyDeprecationWarning)
                 args.remove(arg)
-                warnings.warn("Passing a frame as a positional argument is now "
-                              "deprecated, use the frame= keyword argument "
-                              "instead.", AstropyDeprecationWarning)
                 break
-        else:
-            # Not in args nor kwargs - default to icrs
-            frame_cls = ICRS
-            frame_specified_explicitly = False
+
+        if frame_cls is not None:
+            for arg in args:
+                # We do not allow frames to be passed as positional arguments if data
+                # is passed separately from frame.
+                if isinstance(arg, (SkyCoord, BaseCoordinateFrame)):
+                    raise ValueError("{0} instance cannot be passed as a positional "
+                                     "argument for the frame, pass it using the "
+                                     "frame= keyword instead.".format(arg.__class__.__name__))
 
     # Check that the new frame doesn't conflict with existing coordinate frame
     # if a coordinate is supplied in the args list.  If the frame still had not
     # been set by this point and a coordinate was supplied, then use that frame.
+    frame_with_attrs = frame is not None
     for arg in args:
-        coord_frame_cls = None
         if isinstance(arg, BaseCoordinateFrame):
+            coord_frame = arg
             coord_frame_cls = arg.__class__
         elif isinstance(arg, SkyCoord):
+            coord_frame = arg
             coord_frame_cls = arg.frame.__class__
+        else:
+            continue
 
-        if coord_frame_cls is not None:
-            if not frame_specified_explicitly:
-                frame_cls = coord_frame_cls
-            elif frame_cls is not coord_frame_cls:
-                raise ValueError("Cannot override frame='{0}' of input coordinate with "
-                                 "new frame='{1}'.  Instead transform the coordinate."
-                                 .format(coord_frame_cls.__name__, frame_cls.__name__))
+        if frame is None:
+            frame = coord_frame
+            frame_cls = coord_frame_cls
+        elif frame_cls is not coord_frame_cls:
+            raise ValueError("Cannot override frame='{0}' of input coordinate with "
+                             "new frame='{1}'.  Instead transform the coordinate."
+                             .format(coord_frame.__name__, frame.__name__))
 
+    # If we still do not have a frame class, default to ICRS
+    if frame_cls is None:
+        frame_cls = ICRS
+    else:
+        # Otherwise, ensure we do not loose the frame attributes.
+        if isinstance(frame, SkyCoord):
+            # Copy any extra attributes if they are not explicitly given.
+            for attr in frame._extra_attr_names:
+                kwargs.setdefault(attr, getattr(frame, attr))
+            # ensure we also do frame attributes in next step
+            frame = frame.frame
+
+        if isinstance(frame, BaseCoordinateFrame):
+            # Copy frame attributes; if the frame was given explicitly,
+            # they cannot be given explicitly as well.
+            for attr in frame.get_frame_attr_names():
+                if attr not in kwargs:
+                    kwargs[attr] = getattr(frame, attr)
+                elif frame_with_attrs:
+                    raise ValueError("cannot specify frame attribute '{0}' "
+                                     "directly in SkyCoord since a frame "
+                                     "instance was passed in".format(attr))
+
+    # Now return a new frame instance, with only the representation defined.
     if 'representation' in kwargs:
         frame = frame_cls(representation=_get_repr_cls(kwargs['representation']))
     else:
         frame = frame_cls()
-
     return frame
 
 
@@ -1529,13 +1533,6 @@ def _parse_coordinate_arg(coords, frame, units, init_kwargs):
 
             # Get the value from `data` in the eventual representation
             values.append(getattr(data, repr_attr_name))
-
-        for attr in frame_transform_graph.frame_attributes:
-            value = getattr(coords, attr, None)
-            use_value = (isinstance(coords, SkyCoord)
-                         or attr not in coords._attr_names_with_defaults)
-            if use_value and value is not None:
-                valid_kwargs[attr] = value
 
     elif isinstance(coords, BaseRepresentation):
         data = coords.represent_as(frame.representation)
