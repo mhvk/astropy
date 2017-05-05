@@ -121,6 +121,24 @@ class RepresentationBase(ShapedLikeNDArray):
         for component, attr in zip(components, attrs):
             setattr(self, '_' + component, attr)
 
+    @classmethod
+    def get_name(cls):
+        """Name of the representation or differential.
+
+        In lower case, with any trailing 'representation' or 'differential'
+        removed. (E.g., 'spherical' for
+        `~astropy.coordinates.SphericalRepresentation` or
+        `~astropy.coordinates.SphericalDifferential`.)
+        """
+        name = cls.__name__.lower()
+
+        if name.endswith('representation'):
+            name = name[:-14]
+        elif name.endswith('differential'):
+            name = name[:-12]
+
+        return name
+
     # The two methods that any subclass has to define.
     # Should be replaced by abstractclassmethod once we support only PY3
     @abc.abstractmethod
@@ -404,18 +422,6 @@ class BaseRepresentation(RepresentationBase):
         """
         return representation.represent_as(cls)
 
-    @classmethod
-    def get_name(cls):
-        """Name of the representation.
-
-        In lower case, with any trailing 'representation' removed.
-        (E.g., 'spherical' for `~astropy.coordinates.SphericalRepresentation`.)
-        """
-        name = cls.__name__.lower()
-        if name.endswith('representation'):
-            name = name[:-14]
-        return name
-
     def _scale_operation(self, op, *args):
         """Scale all non-angular components, leaving angular ones unchanged.
 
@@ -663,7 +669,7 @@ class CartesianRepresentation(BaseRepresentation):
         z = cls(self._z, x.unit, copy=False)
         if NUMPY_LT_1_8:  # pragma: no cover
             # numpy 1.7 has problems concatenating broadcasted arrays.
-            x, y, z =  [(c.copy() if 0 in c.strides else c) for c in (x, y, z)]
+            x, y, z = [(c.copy() if 0 in c.strides else c) for c in (x, y, z)]
 
         sh = self.shape
         sh = sh[:xyz_axis] + (1,) + sh[xyz_axis:]
@@ -804,6 +810,7 @@ class CartesianRepresentation(BaseRepresentation):
                                 (getattr(self, component) *
                                  getattr(other_c, component)
                                  for component in self.components))
+
     def cross(self, other):
         """Cross product of two representations.
 
@@ -1796,6 +1803,7 @@ class CartesianDifferential(BaseDifferential):
                              .format(xyz_axis, result_ndim))
         if xyz_axis < 0:
             xyz_axis += result_ndim
+
         # Get x, y, z to the same units (this is very fast for identical units)
         # since np.concatenate cannot deal with quantity.
         cls = self._d_x.__class__
@@ -1806,6 +1814,7 @@ class CartesianDifferential(BaseDifferential):
             # numpy 1.7 has problems concatenating broadcasted arrays.
             dx, dy, dz = [(c.copy() if 0 in c.strides else c)
                           for c in (dx, dy, dz)]
+
         sh = self.shape
         sh = sh[:xyz_axis] + (1,) + sh[xyz_axis:]
         dxyz_value = np.concatenate([c.reshape(sh).value for c in (dx, dy, dz)],
