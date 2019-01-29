@@ -2216,6 +2216,14 @@ class TimeDelta(Time):
                                  'object: {}'.format(err))
         return value
 
+    @property
+    def unit(self):
+        return u.day
+
+    def __array__(self, dtype=None):
+        return np.array(self._time.jd1 + self._time.jd2, dtype=dtype,
+                        copy=False)
+
 
 class ScaleValueError(Exception):
     pass
