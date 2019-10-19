@@ -1,7 +1,11 @@
-import pytest
-from itertools import count
+from itertools import count, product
+from decimal import Decimal
 
-from astropy.time import Time, TimeFormat
+import pytest
+
+import numpy as np
+
+from astropy.time import Time, TimeFormat, TimeNumeric
 
 
 class SpecificException(ValueError):
@@ -127,3 +131,38 @@ def test_custom_time_format_problematic_name():
 
     finally:
         Time.FORMATS.pop("sort", None)
+
+
+@pytest.mark.parametrize(
+    "n, i",
+    product(
+        [
+            "bogus with_underscore",
+            "bogus with_two_underscores",
+            "bogus with_str",
+            "bogus with_long",
+            "bogus with_decimal",
+        ],
+        [58000, 58000.0, np.longdouble(58000.0), "58000", Decimal(58000)],
+    ),
+)
+def test_custom_time_format_name_with_underscore_like_subfmt(n, i):
+    assert n not in Time.FORMATS, "problematic name in default FORMATS!"
+
+    try:
+
+        class Custom(TimeNumeric):
+            name = n
+
+            def set_jds(self, val, val2):
+                self.jd1, self.jd2 = val, val2
+
+        t = Time(i, format=n, scale="tai")
+
+        assert isinstance(getattr(t, n), float)
+        assert isinstance(getattr(t, n + "_str"), str)
+        assert isinstance(getattr(t, n + "_long"), np.longdouble)
+        assert isinstance(getattr(t, n + "_decimal"), Decimal)
+
+    finally:
+        Time.FORMATS.pop(n, None)
