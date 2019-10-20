@@ -166,8 +166,6 @@ class Variable(np.ndarray):
         By default, ``subok=True``, i.e., subclasses are passed through.
     """
 
-    __array_priority__ = 100000
-
     def __new__(cls, value, uncertainty, **kwargs):
         kwargs.setdefault('subok', True)
         value = np.array(value, **kwargs)
@@ -205,51 +203,6 @@ class Variable(np.ndarray):
             super().__array_finalize__(obj)
         self._nominal_value = getattr(obj, '_nominal_value', obj)
         self._uncertainty = getattr(obj, '_uncertainty', None)
-
-    def __array_prepare__(self, obj, context=None):
-        if context is None:
-            return obj
-        # The calculation will be on the data proper, so will produce the
-        # nominal value.  Hence, here we prepare the object that will become
-        # the nominal value using the nominal input values and the
-        # __array_prepare__ of the highest ranked one.
-        function = context[0]
-        nominal_values = tuple(getattr(arg, 'nominal_value', arg)
-                               for arg in context[1][:function.nin])
-        nv_context = (context[0], nominal_values + context[1][function.nin:],
-                      context[2])
-        prepare = self._nominal_value.__array_prepare__
-        priority = self._nominal_value.__array_priority__
-        for nv in nominal_values:
-            if getattr(nv, '__array_priority__', priority) > priority:
-                prepare = nv.__array_prepare__
-                priority = nv.__array_priority__
-
-        return prepare(obj, nv_context)
-
-    def __array_wrap__(self, obj, context=None):
-        if context is None:
-            return obj
-        # First finish the calculation of the nominal value, by wrapping using
-        # the nominal input context and the highest priority __array_wrap__.
-        function = context[0]
-        inputs = context[1][:function.nin]
-        nominal_values = tuple(getattr(arg, 'nominal_value', arg)
-                               for arg in inputs)
-        nv_context = (context[0], nominal_values + context[1][function.nin:],
-                      context[2])
-        wrap = self._nominal_value.__array_wrap__
-        priority = self._nominal_value.__array_priority__
-        for nv in nominal_values:
-            if getattr(nv, '__array_priority__', priority) > priority:
-                wrap = nv.__array_wrap__
-                priority = nv.__array_priority__
-
-        nominal_value = wrap(obj, nv_context)
-
-        obj = nominal_value.view(type(self))
-        obj._nominal_value = nominal_value
-        return obj._add_derivatives(function, inputs, nominal_values)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Evaluate a function on the nominal value, deriving its uncertainty.
