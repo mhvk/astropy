@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Distribution class and associated machinery.
+Variable class and associated machinery.
 """
 import numpy as np
 
@@ -9,7 +8,7 @@ from astropy import units as u
 from astropy.utils.misc import isiterable
 
 
-__all__ = ['Uncertainty', 'Variable']
+__all__ = ['Variable']
 
 
 # Derivatives of ufuncs relative to their input(s).
@@ -65,11 +64,11 @@ class Uncertainty:
 
     Parameters
     ----------
-    uncertainty : `~numpy.ndarray` or subclass
+    uncertainty : `~numpy.ndarray`
         Measurement uncertainties
     check : Bool
-        Whether to convert ``uncertainty`` to an array, and check it is
-        positive (default: ``True``).
+        Whether to check all uncertainties are positive (default: ``True``).
+        Mostly for internal use in slicing, etc.
 
     Notes
     -----
@@ -77,7 +76,7 @@ class Uncertainty:
     """
     def __init__(self, uncertainty, check=True):
         if check and np.any(uncertainty < 0):
-                raise ValueError("The uncertainty cannot be negative.")
+            raise ValueError("The uncertainty cannot be negative.")
         self.uncertainty = uncertainty
         # Set up an ID that uses the memory location and the array strides;
         # the latter helps keep track of slices.
@@ -165,23 +164,34 @@ class Variable(np.ndarray):
         Whether or not to copy the input data.  Default: `True`.
     """
     _generated_subclasses = {}
-    _value_cls = np.ndarray
+    _nominal_cls = _uncertainty_cls = np.ndarray
     _uncertainty = None
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        subclass = cls.__mro__[1]
+        if not hasattr(cls, '_nominal_cls'):
+            cls._nominal_cls = subclass
+        if not hasattr(cls, '_uncertainty_cls'):
+            cls._uncertainty_cls = cls._nominal_cls
+        cls._generated_subclasses[subclass] = cls
 
     def __new__(cls, value, uncertainty=None, copy=True):
         value = np.array(value, dtype=float, subok=True, copy=copy)
         subclass = cls._get_subclass(value.__class__)
+        self = value.view(subclass)
         if uncertainty is not None:
             uncertainty = np.array(uncertainty, dtype=float, subok=True,
                                    copy=copy)
-            uncertainty = value * 0 + uncertainty
-            if uncertainty.shape != value.shape:
-                raise ValueError("shapes of value and uncertainty inconsistent.")
-            uncertainty = Uncertainty(np.asarray(uncertainty))
-
-        self = value.view(subclass)
-        self._uncertainty = uncertainty
+            self._set_uncertainty(uncertainty)
         return self
+
+    def _set_uncertainty(self, uncertainty):
+        if type(uncertainty) is not np.ndarray:
+            raise ValueError('uncertainty should be plain ndarray')
+        if uncertainty.shape != self.shape:
+            uncertainty = np.broadcast_to(uncertainty, self.shape).copy()
+        self._uncertainty = Uncertainty(uncertainty)
 
     @classmethod
     def _get_subclass(cls, subclass):
@@ -194,12 +204,21 @@ class Variable(np.ndarray):
         if not issubclass(subclass, np.ndarray):
             raise ValueError('can only pass in an ndarray subtype.')
 
-        if subclass not in cls._generated_subclasses:
-            new_name = subclass.__name__ + cls.__name__
-            new_cls = type(new_name, (subclass, cls),
-                           {'_value_cls': subclass})
-            cls._generated_subclasses[subclass] = new_cls
-        return cls._generated_subclasses[subclass]
+        variable_subclass = cls._generated_subclasses.get(subclass)
+        if variable_subclass is None:
+            # Create (and therefore register) new Variable subclass.
+            new_name = subclass.__name__ + 'Variable'
+            # Walk through MRO and find closest generated class
+            # (e.g., VariableQuantity for Longitude).
+            for mro_item in subclass.__mro__:
+                base_cls = cls._generated_subclasses.get(mro_item)
+                if base_cls is not None:
+                    break
+            else:
+                base_cls = Variable
+            variable_subclass = type(new_name, (subclass, base_cls), {})
+
+        return variable_subclass
 
     def view(self, dtype=None, type=None):
         if type is None and issubclass(dtype, np.ndarray):
@@ -211,7 +230,7 @@ class Variable(np.ndarray):
 
     @property
     def nominal(self):
-        return super().view(self._value_cls)
+        return super().view(self._nominal_cls)
 
     @property
     def uncertainty(self):
@@ -224,7 +243,7 @@ class Variable(np.ndarray):
             uncertainty = np.broadcast_to(np.array(0.), self.shape)
         else:
             uncertainty = self._uncertainty()
-        uncertainty = np.asanyarray(uncertainty).view(self._value_cls)
+        uncertainty = np.asanyarray(uncertainty).view(self._nominal_cls)
         if callable(uncertainty.__array_finalize__):
             uncertainty.__array_finalize__(self)
         return uncertainty
@@ -261,7 +280,8 @@ class Variable(np.ndarray):
         # No support yet for output arguments.
         assert 'out' not in kwargs
         # Apply the function to the nominal values.
-        values = [getattr(arg, 'nominal', arg) for arg in inputs]
+        values = [(arg.nominal if isinstance(arg, Variable) else arg)
+                  for arg in inputs]
         value = ufunc(*values, **kwargs)
         # Set up the output as a Variable that contains a derived uncertainty.
         if not isinstance(value, np.ndarray):
@@ -293,8 +313,8 @@ class Variable(np.ndarray):
         # the result depends on.
         derivatives = {}
         for deriv_dict in deriv_dicts:
-            for k, [u, d] in deriv_dict.items():
-                derivatives[k] = [u, None]
+            for k, [unc_id, derivative] in deriv_dict.items():
+                derivatives[k] = [unc_id, None]
         # Add to derivatives using chain rule.
         for ufunc_deriv, deriv_dict in zip(ufunc_derivs, deriv_dicts):
             if deriv_dict:
@@ -313,3 +333,10 @@ class Variable(np.ndarray):
     def __repr__(self):
         return '{0}(value={1}, uncertainty={2})'.format(
             type(self).__name__, self.nominal, self.uncertainty)
+
+
+class QuantityVariable(u.Quantity, Variable):
+    # Define subclass just so that one can pass in uncertainty with units.
+    def _set_uncertainty(self, uncertainty):
+        uncertainty = self._to_own_unit(uncertainty)
+        super()._set_uncertainty(uncertainty)

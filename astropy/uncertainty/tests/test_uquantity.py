@@ -2,19 +2,26 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
+
 from astropy import units as u
+from astropy.units import Quantity
 from astropy import constants as c
+from astropy.coordinates import Angle, Longitude
 
 from ..uncertainty import Variable
 
 
 def test_initialisation():
-    v1 = u.Quantity(Variable(5, 2), u.km)
-    assert v1.value.nominal == 5
-    assert v1.value.uncertainty == 2
+    v1 = Quantity(Variable(5, 2), u.km)
+    assert isinstance(v1, Quantity)
+    assert isinstance(v1, Variable)
     assert v1.unit == u.km
     assert v1.nominal == 5 * u.km
     assert v1.uncertainty == 2 * u.km
+    v1_value = v1.value
+    assert type(v1_value) is Variable
+    assert v1_value.nominal == 5
+    assert v1_value.uncertainty == 2
     v2 = Variable(5, 2) * u.km
     assert v2.unit == u.km
     assert v2.nominal == 5 * u.km
@@ -29,6 +36,22 @@ def test_initialisation():
     assert np.all(v4.nominal == np.arange(5.) << u.km)
     assert np.all(v4.uncertainty == np.array([1., 2., 1., 2., 1.]) << u.km)
 
+    a1 = Variable(Angle('1d'), Angle('0d1m'))
+    assert isinstance(a1, Angle)
+    assert isinstance(a1, Variable)
+    assert isinstance(a1.nominal, Angle)
+    assert isinstance(a1.uncertainty, Angle)
+    assert a1.nominal == 1*u.degree
+    assert a1.uncertainty == 1.*u.arcminute
+
+    l1 = Variable(Longitude('3h'), Angle('0d1m'))
+    assert isinstance(l1, Longitude)
+    assert isinstance(l1, Variable)
+    assert isinstance(l1.nominal, Longitude)
+    assert isinstance(l1.uncertainty, Angle)
+    assert a1.nominal == 1*u.degree
+    assert a1.uncertainty == 1.*u.arcminute
+
 
 class TestBasics():
     def setup(self):
@@ -36,6 +59,17 @@ class TestBasics():
         self.a = Variable(np.arange(1., 5.), 1.) << u.s
         self.b = Variable(np.array([1., 2., 3.]),
                           np.array([0.1, 0.2, 0.1])) << u.m
+
+    def test_unit_change(self):
+        v_m = self.v.to(u.m)
+        assert v_m.unit == u.m
+        assert v_m.nominal.value == self.v.nominal.to_value(u.m)
+        assert v_m.uncertainty.value == self.v.uncertainty.to_value(u.m)
+
+    def test_to_value(self):
+        v_in_m = self.v.to_value(u.m)
+        assert v_in_m.nominal == self.v.nominal.to_value(u.m)
+        assert v_in_m.uncertainty == self.v.uncertainty.to_value(u.m)
 
     def test_addition(self):
         unit = self.v.unit
