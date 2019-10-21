@@ -8,45 +8,45 @@ from astropy.units import Quantity
 from astropy import constants as c
 from astropy.coordinates import Angle, Longitude
 
-from ..uncertainty import Variable
+from .. import Measurement
 
 
 def test_initialisation():
-    v1 = Quantity(Variable(5, 2), u.km)
+    v1 = Quantity(Measurement(5, 2), u.km)
     assert isinstance(v1, Quantity)
-    assert isinstance(v1, Variable)
+    assert isinstance(v1, Measurement)
     assert v1.unit == u.km
     assert v1.nominal == 5 * u.km
     assert v1.uncertainty == 2 * u.km
     v1_value = v1.value
-    assert type(v1_value) is Variable
+    assert type(v1_value) is Measurement
     assert v1_value.nominal == 5
     assert v1_value.uncertainty == 2
-    v2 = Variable(5, 2) * u.km
+    v2 = Measurement(5, 2) * u.km
     assert v2.unit == u.km
     assert v2.nominal == 5 * u.km
     assert v2.uncertainty == 2 * u.km
-    v3 = Variable(5 * u.km, 2000 * u.m)
+    v3 = Measurement(5 * u.km, 2000 * u.m)
     assert v3.unit == u.km
     assert v3.nominal == 5 * u.km
     assert v3.uncertainty == 2 * u.km
-    v4 = Variable(np.arange(5.) << u.km,
-                  np.array([1., 2., 1., 2., 1.]) << u.km)
+    v4 = Measurement(np.arange(5.) << u.km,
+                     np.array([1., 2., 1., 2., 1.]) << u.km)
     assert v4.unit == u.km
     assert np.all(v4.nominal == np.arange(5.) << u.km)
     assert np.all(v4.uncertainty == np.array([1., 2., 1., 2., 1.]) << u.km)
 
-    a1 = Variable(Angle('1d'), Angle('0d1m'))
+    a1 = Measurement(Angle('1d'), Angle('0d1m'))
     assert isinstance(a1, Angle)
-    assert isinstance(a1, Variable)
+    assert isinstance(a1, Measurement)
     assert isinstance(a1.nominal, Angle)
     assert isinstance(a1.uncertainty, Angle)
     assert a1.nominal == 1*u.degree
     assert a1.uncertainty == 1.*u.arcminute
 
-    l1 = Variable(Longitude('3h'), Angle('0d1m'))
+    l1 = Measurement(Longitude('3h'), Angle('0d1m'))
     assert isinstance(l1, Longitude)
-    assert isinstance(l1, Variable)
+    assert isinstance(l1, Measurement)
     assert isinstance(l1.nominal, Longitude)
     assert isinstance(l1.uncertainty, Angle)
     assert a1.nominal == 1*u.degree
@@ -55,10 +55,10 @@ def test_initialisation():
 
 class TestBasics():
     def setup(self):
-        self.v = Variable(5., 2.) << u.km
-        self.a = Variable(np.arange(1., 5.), 1.) << u.s
-        self.b = Variable(np.array([1., 2., 3.]),
-                          np.array([0.1, 0.2, 0.1])) << u.m
+        self.v = Measurement(5., 2.) << u.km
+        self.a = Measurement(np.arange(1., 5.), 1.) << u.s
+        self.b = Measurement(np.array([1., 2., 3.]),
+                             np.array([0.1, 0.2, 0.1])) << u.m
 
     def test_unit_change(self):
         v_m = self.v.to(u.m)
@@ -73,14 +73,14 @@ class TestBasics():
 
     def test_addition(self):
         unit = self.v.unit
-        c1 = self.v + Variable(12, 5) * unit
+        c1 = self.v + Measurement(12, 5) * unit
         assert c1.nominal == self.v.nominal + 12*unit
         assert c1.unit == u.km
         # Uncertainties under addition add in quadrature
         assert u.allclose(c1.uncertainty,
                           np.sqrt(self.v.uncertainty**2 + (5*unit)**2))
         # now with different units
-        c2 = self.v + (Variable(12000., 5000.) << u.m)
+        c2 = self.v + (Measurement(12000., 5000.) << u.m)
         assert c2.nominal == self.v.nominal + 12*u.km
         assert c2.unit == u.km
         assert u.allclose(c2.uncertainty,
@@ -99,7 +99,7 @@ class TestBasics():
 
     def test_subtraction(self):
         unit = self.v.unit
-        c1 = self.v - Variable(12, 5) * unit
+        c1 = self.v - Measurement(12, 5) * unit
         assert c1.unit == u.km
         assert c1.nominal == self.v.nominal - 12*unit
         # Uncertainties under addition add in quadrature
@@ -131,10 +131,10 @@ class TestBasics():
 
 
 def test_more_complex():
-    G = Variable(c.G.value, c.G.uncertainty) * c.G.unit
-    m1 = Variable(1e15, 1e5) * u.kg
-    m2 = Variable(100, 10) * u.kg
-    r = Variable(10000, 500) * u.m
+    G = Measurement(c.G.value, c.G.uncertainty) * c.G.unit
+    m1 = Measurement(1e15, 1e5) * u.kg
+    m2 = Measurement(100, 10) * u.kg
+    r = Measurement(10000, 500) * u.m
     F = G * (m1 * m2) / r**2
     assert np.allclose(F.nominal.value, c.G.si.value * (1e15 * 100) / 10000**2)
     assert F.unit == u.N

@@ -7,4 +7,4 @@ uncertainties.
 
 from .core import *
 from .distributions import *
-from .uncertainty import *
+from .measurement import *
