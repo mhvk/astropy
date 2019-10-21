@@ -552,6 +552,13 @@ class Quantity(np.ndarray):
         if obj is None or obj.__class__ is np.ndarray:
             return
 
+        # Check whether super().__array_finalize should be called
+        # (sadly, ndarray.__array_finalize__ is None; we cannot be sure
+        # what is above us).
+        super_array_finalize = super().__array_finalize__
+        if super_array_finalize is not None:
+            super_array_finalize(obj)
+
         # If our unit is not set and obj has a valid one, use it.
         if self._unit is None:
             unit = getattr(obj, '_unit', None)
