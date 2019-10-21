@@ -161,26 +161,55 @@ class Variable(np.ndarray):
     uncertainty : array
         The associated measurement uncertainty.  This is assumed to have no
         dependences on any other variables.
-    kwargs: dict
-        Any further arguments passed on the `~numpy.array` initializer.
-        By default, ``subok=True``, i.e., subclasses are passed through.
+    copy : bool
+        Whether or not to copy the input data.  Default: `True`.
     """
+    _generated_subclasses = {}
+    _value_cls = np.ndarray
+    _uncertainty = None
 
-    def __new__(cls, value, uncertainty, **kwargs):
-        kwargs.setdefault('subok', True)
-        value = np.array(value, **kwargs)
+    def __new__(cls, value, uncertainty=None, copy=True):
+        value = np.array(value, dtype=float, subok=True, copy=copy)
+        subclass = cls._get_subclass(value.__class__)
         if uncertainty is not None:
-            uncertainty = Uncertainty(np.array(uncertainty, **kwargs))
-        # We keep the nominal value separately.  It points to the same data
-        # as `self`, but can have a different class (e.g., Quantity).
-        self = value.view(cls)
-        self._nominal_value = value
+            uncertainty = np.array(uncertainty, dtype=float, subok=True,
+                                   copy=copy)
+            uncertainty = value * 0 + uncertainty
+            if uncertainty.shape != value.shape:
+                raise ValueError("shapes of value and uncertainty inconsistent.")
+            uncertainty = Uncertainty(np.asarray(uncertainty))
+
+        self = value.view(subclass)
         self._uncertainty = uncertainty
         return self
 
+    @classmethod
+    def _get_subclass(cls, subclass):
+        if subclass is None or subclass is np.ndarray:
+            return cls
+        if issubclass(subclass, Variable):
+            return subclass
+        if not issubclass(subclass, np.ndarray):
+            raise ValueError('can only pass in an ndarray subtype.')
+
+        if subclass not in cls._generated_subclasses:
+            new_name = subclass.__name__ + cls.__name__
+            new_cls = type(new_name, (subclass, cls),
+                           {'_value_cls': subclass})
+            cls._generated_subclasses[subclass] = new_cls
+        return cls._generated_subclasses[subclass]
+
+    def view(self, dtype=None, type=None):
+        if type is None and issubclass(dtype, np.ndarray):
+            type = dtype
+            dtype = None
+        elif dtype is not None:
+            raise ValueError('Variable cannot be viewed with new dtype.')
+        return super().view(self._get_subclass(type))
+
     @property
     def nominal_value(self):
-        return self._nominal_value
+        return super().view(self._value_cls)
 
     @property
     def uncertainty(self):
@@ -189,20 +218,35 @@ class Variable(np.ndarray):
         Returns either the measurement uncertainty, or the uncertainty derived
         by propagating the uncertainties of the underlying measurements.
         """
-        return self._uncertainty() if self._uncertainty is not None else 0
+        if self._uncertainty is None:
+            uncertainty = np.broadcast_to(np.array(0.), self.shape)
+        else:
+            uncertainty = self._uncertainty()
+        uncertainty = np.asanyarray(uncertainty).view(self._value_cls)
+        if callable(uncertainty.__array_finalize__):
+            uncertainty.__array_finalize__(self)
+        return uncertainty
 
     def __getitem__(self, item):
-        nominal_value = self._nominal_value[item]
-        result = nominal_value.view(type(self))
-        result._nominal_value = nominal_value
+        result = super().__getitem__(item)
+        if not isinstance(result, self.__class__):
+            result = result[...].view(self.__class__)
         result._uncertainty = self._uncertainty[item]
         return result
 
     def __array_finalize__(self, obj):
-        if super().__array_finalize__:
-            super().__array_finalize__(obj)
-        self._nominal_value = getattr(obj, '_nominal_value', obj)
-        self._uncertainty = getattr(obj, '_uncertainty', None)
+        if obj is None or obj.__class__ is np.ndarray:
+            return
+
+        # Check whether super().__array_finalize should be called
+        # (sadly, ndarray.__array_finalize__ is None; we cannot be sure
+        # what is above us).
+        super_array_finalize = super().__array_finalize__
+        if super_array_finalize is not None:
+            super_array_finalize(obj)
+
+        if self._uncertainty is None:
+            self._uncertainty = getattr(obj, '_uncertainty', None)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Evaluate a function on the nominal value, deriving its uncertainty.
@@ -222,6 +266,16 @@ class Variable(np.ndarray):
             value = np.array(value)
         result = value.view(type(self))
         return result._add_derivatives(ufunc, inputs, values)
+
+    def __array_function__(self, function, types, args, kwargs):
+        if function is np.array2string:
+            # Complete hack.
+            if self.shape == ():
+                return str(self)
+            kwargs.setdefault('formatter',
+                              {'all': self.__class__.__str__})
+
+        return super().__array_function__(function, types, args, kwargs)
 
     def _add_derivatives(self, ufunc, inputs, nominal_values):
         # get the functions that calculate derivatives of the ufunc

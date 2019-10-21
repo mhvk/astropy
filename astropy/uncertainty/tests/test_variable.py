@@ -15,7 +15,8 @@ def test_initialisation():
     assert v2.uncertainty == 0
     v4 = Variable(np.arange(5.), 2.)
     assert np.all(v4.nominal_value == np.arange(5.))
-    assert v4.uncertainty == 2
+    assert v4.uncertainty.shape == (5,)
+    assert np.all(v4.uncertainty == 2)
     v5 = Variable(np.arange(5.), np.array([1., 2., 1., 2., 1.]))
     assert np.all(v5.nominal_value == np.arange(5.))
     assert np.all(v5.uncertainty == np.array([1., 2., 1., 2., 1.]))
