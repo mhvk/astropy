@@ -185,7 +185,9 @@ class Variable(np.ndarray):
 
     @classmethod
     def _get_subclass(cls, subclass):
-        if subclass is None or subclass is np.ndarray:
+        if subclass is np.ndarray:
+            return Variable
+        if subclass is None:
             return cls
         if issubclass(subclass, Variable):
             return subclass
@@ -273,7 +275,7 @@ class Variable(np.ndarray):
             if self.shape == ():
                 return str(self)
             kwargs.setdefault('formatter',
-                              {'all': self.__class__.__str__})
+                              {'all': Variable.__str__})
 
         return super().__array_function__(function, types, args, kwargs)
 

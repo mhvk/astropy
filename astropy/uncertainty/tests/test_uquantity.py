@@ -2,26 +2,24 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-from ... import units as u
-from ... import constants as c
+from astropy import units as u
+from astropy import constants as c
 
-from .uncertainty import Variable
+from ..uncertainty import Variable
 
 
 def test_initialisation():
     v1 = u.Quantity(Variable(5, 2), u.km)
-    assert v1.value == Variable(5, 2)
+    assert v1.value.nominal == 5
+    assert v1.value.uncertainty == 2
     assert v1.unit == u.km
     assert v1.nominal == 5 * u.km
     assert v1.uncertainty == 2 * u.km
     v2 = Variable(5, 2) * u.km
-    assert v2.value == Variable(5, 2)
     assert v2.unit == u.km
     assert v2.nominal == 5 * u.km
     assert v2.uncertainty == 2 * u.km
-    assert v1 == v2
     v3 = Variable(5 * u.km, 2000 * u.m)
-    assert v3.value == Variable(5, 2)
     assert v3.unit == u.km
     assert v3.nominal == 5 * u.km
     assert v3.uncertainty == 2 * u.km
@@ -41,28 +39,27 @@ class TestBasics():
 
     def test_addition(self):
         unit = self.v.unit
-        c1 = self.v + Variable(12, 5) << unit
+        c1 = self.v + Variable(12, 5) * unit
         assert c1.nominal == self.v.nominal + 12*unit
         assert c1.unit == u.km
         # Uncertainties under addition add in quadrature
-        assert np.allclose(c1.uncertainty,
-                           np.sqrt(self.v.uncertainty**2 + (5*unit)**2))
+        assert u.allclose(c1.uncertainty,
+                          np.sqrt(self.v.uncertainty**2 + (5*unit)**2))
         # now with different units
-        c2 = self.v + Variable(12000., 5000.) << u.m
-        assert c2.value == self.v.value + 12*u.m
+        c2 = self.v + (Variable(12000., 5000.) << u.m)
+        assert c2.nominal == self.v.nominal + 12*u.km
         assert c2.unit == u.km
-        assert np.allclose(c2.uncertainty,
-                           np.sqrt(self.v.uncertainty**2 + (5*u.m)**2))
+        assert u.allclose(c2.uncertainty,
+                          np.sqrt(self.v.uncertainty**2 + (5*u.km)**2))
         # try array
         c3 = self.v + self.b
         assert np.all(c3.nominal == self.v.nominal + self.b.nominal)
-        assert np.allclose(c3.uncertainty,
-                           np.sqrt(self.v.uncertainty**2 +
-                                   self.b.uncertainty**2))
+        assert u.allclose(c3.uncertainty,
+                          np.sqrt(self.v.uncertainty**2 +
+                                  self.b.uncertainty**2))
         # try adding regular Quantity
         q = 10. * self.v.unit
         c4 = self.v + q
-        assert c4.value == Variable(self.v.value + 10.)
         assert c4.nominal == self.v.nominal + q
         assert c4.uncertainty == self.v.uncertainty
 
@@ -86,7 +83,6 @@ class TestBasics():
         # Test multiplication with straight Quantity
         q = 10. * u.s
         c2 = self.a * q
-        assert np.all(c2.value == self.a.value * 10.)
         assert c2.unit == self.a.unit * u.s
         assert np.all(c2.nominal == self.a.nominal * q)
         assert np.all(c2.uncertainty == self.a.uncertainty * q)
