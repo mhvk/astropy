@@ -208,7 +208,7 @@ class Variable(np.ndarray):
         return super().view(self._get_subclass(type))
 
     @property
-    def nominal_value(self):
+    def nominal(self):
         return super().view(self._value_cls)
 
     @property
@@ -259,7 +259,7 @@ class Variable(np.ndarray):
         # No support yet for output arguments.
         assert 'out' not in kwargs
         # Apply the function to the nominal values.
-        values = [getattr(arg, 'nominal_value', arg) for arg in inputs]
+        values = [getattr(arg, 'nominal', arg) for arg in inputs]
         value = ufunc(*values, **kwargs)
         # Set up the output as a Variable that contains a derived uncertainty.
         if not isinstance(value, np.ndarray):
@@ -277,7 +277,7 @@ class Variable(np.ndarray):
 
         return super().__array_function__(function, types, args, kwargs)
 
-    def _add_derivatives(self, ufunc, inputs, nominal_values):
+    def _add_derivatives(self, ufunc, inputs, nominals):
         # get the functions that calculate derivatives of the ufunc
         # relative to the nominal input values.
         ufunc_derivs = UFUNC_DERIVATIVES[ufunc]
@@ -296,7 +296,7 @@ class Variable(np.ndarray):
         # Add to derivatives using chain rule.
         for ufunc_deriv, deriv_dict in zip(ufunc_derivs, deriv_dicts):
             if deriv_dict:
-                new_deriv = ufunc_deriv(*nominal_values)
+                new_deriv = ufunc_deriv(*nominals)
             for unc_id, (uncertainty, derivative) in deriv_dict.items():
                 if derivatives[unc_id][1] is None:
                     derivatives[unc_id][1] = new_deriv * derivative
@@ -306,8 +306,8 @@ class Variable(np.ndarray):
         return self
 
     def __str__(self):
-        return '{0}±{1}'.format(self.nominal_value, self.uncertainty)
+        return '{0}±{1}'.format(self.nominal, self.uncertainty)
 
     def __repr__(self):
         return '{0}(value={1}, uncertainty={2})'.format(
-            type(self).__name__, self.nominal_value, self.uncertainty)
+            type(self).__name__, self.nominal, self.uncertainty)
