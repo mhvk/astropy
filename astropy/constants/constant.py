@@ -233,11 +233,12 @@ class Constant(Quantity, metaclass=ConstantMeta):
         return self._instance_or_super('cgs')
 
     def __array_finalize__(self, obj):
-        for attr in ('_abbrev', '_name', '_value', '_unit_string',
-                     '_uncertainty', '_reference', '_system'):
-            setattr(self, attr, getattr(obj, attr, None))
+        if isinstance(obj, Constant):
+            for attr in ('_abbrev', '_name', '_value', '_unit_string',
+                         '_uncertainty', '_reference', '_system'):
+                setattr(self, attr, getattr(obj, attr, None))
 
-        self._checked_units = getattr(obj, '_checked_units', False)
+            self._checked_units = getattr(obj, '_checked_units', False)
         super().__array_finalize__(obj)
 
 
