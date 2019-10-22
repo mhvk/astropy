@@ -46,13 +46,15 @@ class Measurement(np.ndarray):
         if uncertainty is not None:
             uncertainty = np.array(uncertainty, dtype=float, subok=True,
                                    copy=copy)
-            self._set_uncertainty(uncertainty)
+        self._set_uncertainty(uncertainty)
         return self
 
     def _set_uncertainty(self, uncertainty):
-        if type(uncertainty) is not np.ndarray:
+        if uncertainty is None:
+            uncertainty = np.zeros(self.shape, dtype=float)
+        elif type(uncertainty) is not np.ndarray:
             raise ValueError('uncertainty should be plain ndarray')
-        if uncertainty.shape != self.shape:
+        elif uncertainty.shape != self.shape:
             uncertainty = np.broadcast_to(uncertainty, self.shape).copy()
         self._uncertainty = Uncertainty(uncertainty)
 
@@ -102,10 +104,7 @@ class Measurement(np.ndarray):
         Returns either the measurement uncertainty, or the uncertainty derived
         by propagating the uncertainties of the underlying measurements.
         """
-        if self._uncertainty is None:
-            uncertainty = np.broadcast_to(np.array(0.), self.shape)
-        else:
-            uncertainty = self._uncertainty()
+        uncertainty = self._uncertainty()
         uncertainty = uncertainty[...].view(self._uncertainty_cls)
         if callable(uncertainty.__array_finalize__):
             uncertainty.__array_finalize__(self)
@@ -148,11 +147,13 @@ class Measurement(np.ndarray):
         # Apply the function to the nominal values.
         values = [(arg.nominal if isinstance(arg, Measurement) else arg)
                   for arg in inputs]
-        value = ufunc(*values, **kwargs)
-        # Set up the output as a Measurement that contains a derived uncertainty.
+        value = super().__array_ufunc__(ufunc, method, *values, **kwargs)
+
+        # Set up output as a Measurement that contains a derived uncertainty.
         if not isinstance(value, np.ndarray):
             value = np.array(value)
 
+        # TODO: probably better to instantiate Measurand class here.
         result = value.view(type(self))
         derivatives = chain_derivatives(ufunc, inputs, values)
         result._uncertainty = DerivedUncertainty(derivatives)

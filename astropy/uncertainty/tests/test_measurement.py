@@ -10,9 +10,9 @@ def test_initialisation():
     v1 = Measurement(5, 2)
     assert v1.nominal == 5
     assert v1.uncertainty == 2
-    v2 = Measurement(5, None)
+    # No uncertainty.
+    v2 = Measurement(5)
     assert v2.nominal == 5
-    assert v2._uncertainty is None
     assert v2.uncertainty == 0
     v4 = Measurement(np.arange(5.), 2.)
     assert np.all(v4.nominal == np.arange(5.))
@@ -44,7 +44,7 @@ class TestBasics():
         assert c4.nominal == self.v.nominal + 10.
         assert c4.uncertainty == self.v.uncertainty
         # And a measurement without an uncertainty.
-        c5 = self.v + Measurement(10., None)
+        c5 = self.v + Measurement(10.)
         assert c5.nominal == self.v.nominal + 10.
         assert len(c5._uncertainty.derivatives) == 1
         assert c5.uncertainty == self.v.uncertainty

@@ -22,7 +22,7 @@ class Uncertainty:
 
     Notes
     -----
-    This class is mostly for internal use by `Variable`.
+    This class is for internal use by `~astropy.uncertainties.Measurement`.
     """
     def __init__(self, uncertainty, check=True):
         if check and np.any(uncertainty < 0):
@@ -34,7 +34,7 @@ class Uncertainty:
                    uncertainty.__array_interface__['strides'])
         # Any derived uncertainty will use this dictionary, ensuring there is
         # a link that keeps the value in memory until it is not used any more.
-        self.derivatives = {self.id: [self, 1.]}
+        self.derivatives = {self.id: [self, 1.]} if np.any(uncertainty > 0) else {}
 
     def __call__(self):
         """Get the uncertainty.  Returns simply the stored value."""
@@ -59,7 +59,7 @@ class DerivedUncertainty:
 
     Notes
     -----
-    This class is mostly for internal use by `Variable`.
+    This class is for internal use by `~astropy.uncertainties.Measurement`.
     """
     def __init__(self, derivatives):
         self.derivatives = derivatives
