@@ -4,7 +4,8 @@ Measurement class and associated machinery.
 """
 import numpy as np
 
-from astropy import units as u
+from astropy.units import Quantity
+from astropy.constants import Constant
 
 from .uncertainty import Uncertainty, DerivedUncertainty
 
@@ -78,8 +79,8 @@ class Measurement(np.ndarray):
     _uncertainty = None
 
     def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
         subclass = cls.__mro__[1]
+        super().__init_subclass__(**kwargs)
         # If not explicitly defined for this class, use defaults.
         # (TODO: metaclass better in this case?)
         if '_nominal_cls' not in cls.__dict__:
@@ -155,7 +156,7 @@ class Measurement(np.ndarray):
             uncertainty = np.broadcast_to(np.array(0.), self.shape)
         else:
             uncertainty = self._uncertainty()
-        uncertainty = np.asanyarray(uncertainty).view(self._nominal_cls)
+        uncertainty = uncertainty[...].view(self._uncertainty_cls)
         if callable(uncertainty.__array_finalize__):
             uncertainty.__array_finalize__(self)
         return uncertainty
@@ -247,8 +248,40 @@ class Measurement(np.ndarray):
             type(self).__name__, self.nominal, self.uncertainty)
 
 
-class QuantityMeasurement(u.Quantity, Measurement):
+class QuantityMeasurement(Quantity, Measurement):
     # Define subclass just so that one can pass in uncertainty with units.
     def _set_uncertainty(self, uncertainty):
         uncertainty = self._to_own_unit(uncertainty)
         super()._set_uncertainty(uncertainty)
+
+
+class ConstantMeasurement(Constant, Measurement):
+    # Constant uses uncertainty and _uncertainty as well, but not
+    # quite in the same way.  Fortunately, we never get back to this
+    # class through a view, so we can be quite sloppy.
+
+    # TODO: Let Constant use Measurement inside?
+
+    _uncertainty_cls = Quantity
+
+    def _set_uncertainty(self, uncertainty):
+        raise TypeError('cannot set uncertainty on a ConstantMeasurement.')
+
+    def __array_finalize__(self, obj):
+        if obj is None or obj.__class__ is np.ndarray:
+            return
+        super().__array_finalize__(obj)
+        # Correct _uncertainty from float to Uncertainty instance.
+        self._uncertainty = Uncertainty(np.array(self._uncertainty))
+
+    @property
+    def uncertainty(self):
+        # Override Constant.property
+        return super(Constant, self).uncertainty
+
+    @property
+    def nominal(self):
+        nominal = super().nominal
+        # unarrayify _uncertainty
+        nominal._uncertainty = nominal._uncertainty().item()
+        return nominal

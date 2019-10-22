@@ -4,8 +4,9 @@
 import numpy as np
 
 from astropy import units as u
-from astropy.units import Quantity
 from astropy import constants as c
+from astropy.units import Quantity
+from astropy.constants import Constant
 from astropy.coordinates import Angle, Longitude
 
 from .. import Measurement
@@ -51,6 +52,14 @@ def test_initialisation():
     assert isinstance(l1.uncertainty, Angle)
     assert a1.nominal == 1*u.degree
     assert a1.uncertainty == 1.*u.arcminute
+
+    c1 = Measurement(c.G)
+    assert isinstance(c1, Constant)
+    assert isinstance(c1, Measurement)
+    assert isinstance(c1.nominal, Constant)
+    assert isinstance(c1.uncertainty, Quantity)
+    assert c1.nominal == c.G
+    assert c1.uncertainty == c.G.uncertainty << c.G.unit
 
 
 class TestBasics():
@@ -131,7 +140,7 @@ class TestBasics():
 
 
 def test_more_complex():
-    G = Measurement(c.G.value, c.G.uncertainty) * c.G.unit
+    G = Measurement(c.G)
     m1 = Measurement(1e15, 1e5) * u.kg
     m2 = Measurement(100, 10) * u.kg
     r = Measurement(10000, 500) * u.m

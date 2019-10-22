@@ -238,6 +238,7 @@ class Constant(Quantity, metaclass=ConstantMeta):
             setattr(self, attr, getattr(obj, attr, None))
 
         self._checked_units = getattr(obj, '_checked_units', False)
+        super().__array_finalize__(obj)
 
 
 class EMConstant(Constant):
