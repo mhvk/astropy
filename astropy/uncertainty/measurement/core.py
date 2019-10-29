@@ -139,6 +139,17 @@ class Measurement(np.ndarray):
         """
         # TODO: this is too general; need to allow bool type, etc.!
         if ufunc not in UFUNC_DERIVATIVES:
+            if ufunc in (np.equal, np.not_equal):
+                # TODO: maybe makes more sense to return Masked array?
+                diff = np.subtract(*inputs)
+                result = ufunc(diff.nominal, 0., **kwargs)
+                result_unc = ufunc(diff.uncertainty, 0.)
+                if ufunc is np.equal:
+                    result &= result_unc
+                else:
+                    result |= result_unc
+                return result
+
             return NotImplemented
         # No support yet for ufunc methods (at, reduce, reduceat, outer, etc.).
         assert method == '__call__'

@@ -97,3 +97,10 @@ class TestBasics():
         c2 = self.v - self.v
         assert c2.nominal == 0
         assert c2.uncertainty == 0
+
+    def test_equality(self):
+        assert self.v == self.v
+        assert np.all(self.b == self.b)
+        # Errors not correlated so cannot know these are equal.
+        assert self.v != Measurement(self.v.nominal, self.v.uncertainty)
+        assert not np.any(self.b == self.b.nominal)
