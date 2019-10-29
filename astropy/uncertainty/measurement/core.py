@@ -136,7 +136,7 @@ class Measurement(np.ndarray):
         The derivation is done by error propagation, using the derivatives of
         the given function.
         """
-        from .helpers import UFUNC_DERIVATIVES, chain_derivatives
+        from .helpers import UFUNC_DERIVATIVES, chain_ufunc_derivatives
 
         # TODO: this is too general; need to allow bool type, etc.!
         if ufunc not in UFUNC_DERIVATIVES:
@@ -167,11 +167,16 @@ class Measurement(np.ndarray):
 
         # TODO: probably better to instantiate Measurand class here.
         result = value.view(type(self))
-        derivatives = chain_derivatives(ufunc, inputs, values)
+        derivatives = chain_ufunc_derivatives(ufunc, inputs, values)
         result._uncertainty = DerivedUncertainty(derivatives)
         return result
 
     def __array_function__(self, function, types, args, kwargs):
+        from .function_helpers import FUNCTION_HELPERS
+
+        if function in FUNCTION_HELPERS:
+            return FUNCTION_HELPERS[function](*args, **kwargs)
+
         if function is np.array2string:
             # Complete hack.
             if self.shape == ():

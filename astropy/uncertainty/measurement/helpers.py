@@ -59,7 +59,7 @@ UFUNC_DERIVATIVES[np.divide] = UFUNC_DERIVATIVES[np.true_divide]
 UFUNC_DERIVATIVES[np.abs] = UFUNC_DERIVATIVES[np.fabs]
 
 
-def chain_derivatives(ufunc, inputs, nominals):
+def chain_ufunc_derivatives(ufunc, inputs, nominals):
     """Calculate derivatives to all the base Measurements."""
     # get the functions that calculate derivatives of the ufunc
     # relative to the nominal input values.
@@ -72,6 +72,10 @@ def chain_derivatives(ufunc, inputs, nominals):
                     if isinstance(input_, Measurement) else None)
                    for input_, ufunc_deriv in zip(inputs, ufunc_derivs)]
 
+    return chain_derivatives(inputs, derivatives)
+
+
+def chain_derivatives(inputs, derivatives):
     # Get derivatives of those inputs to the underlying measurements.
     deriv_dicts = [(input_._uncertainty.derivatives
                     if isinstance(input_, Measurement) else {})

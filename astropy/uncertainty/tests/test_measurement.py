@@ -3,6 +3,7 @@
 
 import pytest
 import numpy as np
+from numpy.testing import assert_array_equal
 
 from .. import Measurement
 
@@ -144,3 +145,12 @@ class TestCopyGetItem(BasicSetup):
         expected = np.zeros(self.a.shape, dtype=bool)
         expected[item] = True
         assert np.all(eq == expected)
+
+
+class TestConcatenate(BasicSetup):
+    def test_concatenate(self):
+        c = np.concatenate((self.a, self.b))
+        c_nx = np.concatenate((self.a.nominal, self.b.nominal))
+        assert_array_equal(c.nominal, c_nx)
+        c_ux = np.concatenate((self.a.uncertainty, self.b.uncertainty))
+        assert_array_equal(c.uncertainty, c_ux)
