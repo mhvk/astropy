@@ -108,6 +108,15 @@ class TestBasics(BasicSetup):
         assert self.v != Measurement(self.v.nominal, self.v.uncertainty)
         assert not np.any(self.b == self.b.nominal)
 
+    def test_positive(self):
+        pa = +self.a
+        assert pa is not self.a
+        assert np.all(pa == self.a)
+
+    def test_negative(self):
+        ma = -self.a
+        assert np.all(ma + self.a == 0)
+
 
 class TestCopyGetItem(BasicSetup):
     def test_copy(self):

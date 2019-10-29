@@ -9,6 +9,8 @@ import numpy as np
 
 # Derivatives of ufuncs relative to their input(s).
 UFUNC_DERIVATIVES = {
+    np.positive: lambda x: 1.,
+    np.negative: lambda x: -1.,
     np.add: (lambda x, y: 1.,
              lambda x, y: 1.),
     np.subtract: (lambda x, y: 1.,
