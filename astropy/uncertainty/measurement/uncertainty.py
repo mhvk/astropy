@@ -80,9 +80,9 @@ class DerivedUncertainty:
 
     def __call__(self):
         """Calculate the uncertainty as the rms of the components."""
-        variance = None
+        variance = 0
         for delta in self.uncertainty_components:
-            variance = delta**2 if variance is None else variance + delta**2
+            variance += delta**2
         return np.sqrt(variance)
 
     def __getitem__(self, item):

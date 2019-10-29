@@ -104,8 +104,8 @@ class Measurement(np.ndarray):
         Returns either the measurement uncertainty, or the uncertainty derived
         by propagating the uncertainties of the underlying measurements.
         """
-        uncertainty = self._uncertainty()
-        uncertainty = uncertainty[...].view(self._uncertainty_cls)
+        uncertainty = np.broadcast_to(self._uncertainty(), self.shape)
+        uncertainty = uncertainty.view(self._uncertainty_cls)
         if callable(uncertainty.__array_finalize__):
             uncertainty.__array_finalize__(self)
         return uncertainty

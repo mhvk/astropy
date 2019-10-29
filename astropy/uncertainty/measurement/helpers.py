@@ -84,4 +84,10 @@ def chain_derivatives(ufunc, inputs, nominals):
             else:
                 derivatives[unc_id][1] += new_deriv * derivative
 
+    # Remove any that are zero.
+    zero_ids = [unc_id for unc_id, (_, derivative)
+                in derivatives.items() if np.all(derivative == 0)]
+    for unc_id in zero_ids:
+        derivatives.pop(unc_id)
+
     return derivatives

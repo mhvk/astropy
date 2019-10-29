@@ -54,6 +54,17 @@ class TestBasics():
         assert c.nominal == self.v.nominal - 12
         # Uncertainties under addition add in quadrature
         assert c.uncertainty == np.sqrt(self.v.uncertainty**2 + 5**2)
+        c2 = self.b - Measurement(12, 5)
+        assert np.all(c2.nominal == self.b.nominal - 12)
+        c2_uncertainty = c2.uncertainty
+        assert c2_uncertainty.shape == c2.shape
+        assert np.all(c2_uncertainty == np.sqrt(self.b.uncertainty**2 + 5**2))
+
+    def test_subtraction_nothing_left(self):
+        c = self.v - self.v
+        assert c.nominal == 0
+        assert c.uncertainty == 0
+        assert c._uncertainty.derivatives == {}
 
     def test_multiplication(self):
         c = self.v * self.a
