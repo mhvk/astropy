@@ -1,6 +1,7 @@
 # coding: utf-8
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import pytest
 import numpy as np
 
 from .. import Measurement
@@ -23,12 +24,14 @@ def test_initialisation():
     assert np.all(v5.uncertainty == np.array([1., 2., 1., 2., 1.]))
 
 
-class TestBasics():
+class BasicSetup:
     def setup(self):
         self.v = Measurement(5., 2.)
         self.a = Measurement(np.arange(1., 5.), 1.)
         self.b = Measurement(np.array([1., 2., 3.]), np.array([0.1, 0.2, 0.1]))
 
+
+class TestBasics(BasicSetup):
     def test_addition(self):
         c = self.v + Measurement(12, 5)
         assert c.nominal == self.v.nominal + 12
@@ -104,3 +107,31 @@ class TestBasics():
         # Errors not correlated so cannot know these are equal.
         assert self.v != Measurement(self.v.nominal, self.v.uncertainty)
         assert not np.any(self.b == self.b.nominal)
+
+
+class TestCopyGetItem(BasicSetup):
+    def test_copy(self):
+        v_copy = self.v.copy()
+        assert v_copy == self.v
+        b_copy = self.b.copy()
+        assert np.all(b_copy == self.b)
+
+    @pytest.mark.parametrize('item', [(), Ellipsis])
+    def test_scalar_getself(self, item):
+        tv = self.v[item]
+        assert tv is not self.v
+        assert tv == self.v
+
+    @pytest.mark.parametrize('item', [(), Ellipsis])
+    def test_array_getall(self, item):
+        ta = self.a[item]
+        assert np.all(ta == self.a)
+
+    @pytest.mark.xfail
+    @pytest.mark.parametrize('item', [slice(0, 1), 0, -1])
+    def test_array_getitem(self, item):
+        ta = self.a[item]
+        eq = ta == self.a
+        expected = np.zeros(self.a.shape, dtype=bool)
+        expected[item] = True
+        assert np.all(eq == expected)

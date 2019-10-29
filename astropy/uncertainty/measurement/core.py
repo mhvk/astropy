@@ -180,6 +180,11 @@ class Measurement(np.ndarray):
 
         return super().__array_function__(function, types, args, kwargs)
 
+    def copy(self):
+        copy = self.nominal.copy().view(type(self))
+        copy._uncertainty = DerivedUncertainty(self._uncertainty.derivatives)
+        return copy
+
     def __str__(self):
         return '{0}±{1}'.format(self.nominal, self.uncertainty)
 

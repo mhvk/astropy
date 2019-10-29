@@ -42,7 +42,11 @@ class Uncertainty:
 
     def __getitem__(self, item):
         # Particular items are stored in a new instance, with a new ID.
-        return self.__class__(uncertainty=self.uncertainty[item], check=False)
+        if item == () or item is Ellipsis:
+            return self.__class__(uncertainty=self.uncertainty, check=False)
+
+        raise IndexError(f'indexing {self.__class__} with {item} not '
+                         'possible') from None
 
     def __repr__(self):
         return '{0}({1})'.format(type(self).__name__, self.uncertainty)
@@ -86,15 +90,11 @@ class DerivedUncertainty:
         return np.sqrt(variance)
 
     def __getitem__(self, item):
-        # Get the item from each of the uncertainties that contribute.
-        # TODO: this needs proper support for slicing, incl. broadcasting, etc.
-        derivatives = {}
-        for unc_id, (uncertainty, derivative) in self.derivatives.items():
-            uncertainty = uncertainty[item]
-            if isiterable(derivative):
-                derivative = derivative[item]
-            derivatives[uncertainty.id] = [uncertainty, derivative]
-        return self.__class__(derivatives)
+        if item == () or item is Ellipsis:
+            return self.__class__(self.derivatives)
+
+        raise IndexError(f'indexing {self.__class__} with {item} not '
+                         'possible') from None
 
     def __repr__(self):
         return '{0}({1})'.format(type(self).__name__, self.derivatives)
