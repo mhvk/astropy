@@ -5,7 +5,6 @@ Measurement class and associated machinery.
 import numpy as np
 
 from .uncertainty import Uncertainty, DerivedUncertainty
-from .helpers import UFUNC_DERIVATIVES, chain_derivatives
 
 
 __all__ = ['Measurement']
@@ -137,6 +136,8 @@ class Measurement(np.ndarray):
         The derivation is done by error propagation, using the derivatives of
         the given function.
         """
+        from .helpers import UFUNC_DERIVATIVES, chain_derivatives
+
         # TODO: this is too general; need to allow bool type, etc.!
         if ufunc not in UFUNC_DERIVATIVES:
             if ufunc in (np.equal, np.not_equal):

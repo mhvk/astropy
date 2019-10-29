@@ -7,6 +7,8 @@ In particular derivatives to the various ufuncs.
 
 import numpy as np
 
+from .core import Measurement
+
 # Derivatives of ufuncs relative to their input(s).
 UFUNC_DERIVATIVES = {
     np.positive: lambda x: 1.,
@@ -62,34 +64,36 @@ def chain_derivatives(ufunc, inputs, nominals):
     # get the functions that calculate derivatives of the ufunc
     # relative to the nominal input values.
     ufunc_derivs = UFUNC_DERIVATIVES[ufunc]
-    if len(inputs) == 1:
+    if not isinstance(ufunc_derivs, tuple):
         ufunc_derivs = (ufunc_derivs,)
 
-    # For Measurement inputs, get possible derivatives to other measurements.
-    deriv_dicts = [getattr(getattr(arg, '_uncertainty', None),
-                           'derivatives', {}) for arg in inputs]
+    # Calculate derivates to any Measurement inputs.
+    derivatives = [(ufunc_deriv(*nominals)
+                    if isinstance(input_, Measurement) else None)
+                   for input_, ufunc_deriv in zip(inputs, ufunc_derivs)]
+
+    # Get derivatives of those inputs to the underlying measurements.
+    deriv_dicts = [(input_._uncertainty.derivatives
+                    if isinstance(input_, Measurement) else {})
+                   for input_ in inputs]
 
     # Set up a new derivatives dictionary, with entries to all measurements
     # the result depends on.
-    derivatives = {}
+    new_deriv_dict = {}
     for deriv_dict in deriv_dicts:
         for k, [unc_id, derivative] in deriv_dict.items():
-            derivatives[k] = [unc_id, None]
+            new_deriv_dict[k] = [unc_id, 0]
 
     # Add to derivatives using chain rule.
-    for ufunc_deriv, deriv_dict in zip(ufunc_derivs, deriv_dicts):
-        if deriv_dict:
-            new_deriv = ufunc_deriv(*nominals)
-        for unc_id, (uncertainty, derivative) in deriv_dict.items():
-            if derivatives[unc_id][1] is None:
-                derivatives[unc_id][1] = new_deriv * derivative
-            else:
-                derivatives[unc_id][1] += new_deriv * derivative
+    for derivative, deriv_dict in zip(derivatives, deriv_dicts):
+        if derivative is not None:
+            for unc_id, (_, unc_derivative) in deriv_dict.items():
+                new_deriv_dict[unc_id][1] += derivative * unc_derivative
 
     # Remove any that are zero.
     zero_ids = [unc_id for unc_id, (_, derivative)
-                in derivatives.items() if np.all(derivative == 0)]
+                in new_deriv_dict.items() if np.all(derivative == 0)]
     for unc_id in zero_ids:
-        derivatives.pop(unc_id)
+        new_deriv_dict.pop(unc_id)
 
-    return derivatives
+    return new_deriv_dict
