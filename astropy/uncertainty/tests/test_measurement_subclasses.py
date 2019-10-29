@@ -2,12 +2,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
+import pytest
 
 from astropy import units as u
 from astropy import constants as c
 from astropy.units import Quantity
 from astropy.constants import Constant
-from astropy.coordinates import Angle, Longitude
+from astropy.coordinates import Angle, Longitude, representation as r
 
 from .. import Measurement
 
@@ -153,3 +154,26 @@ def test_more_complex():
         (G.nominal*m2.nominal/(r.nominal**2)*m1.uncertainty)**2 +
         (G.nominal*m1.nominal/(r.nominal**2)*m2.uncertainty)**2 +
         (-2*G.nominal*m1.nominal*m2.nominal/(r.nominal**3)*r.uncertainty)**2))
+
+
+class TestRepresentations:
+    def setup(self):
+        self.x = 5.
+        self.y = 12.
+        self.z = 0.
+        self.c = r.CartesianRepresentation(self.x, self.y, self.z)
+        self.mx = Measurement(self.x, 2.) << u.m
+        self.my = Measurement(self.y, 3.) << u.m
+        self.mz = Measurement(self.z, 2.) << u.m
+        self.mc = r.CartesianRepresentation(self.mx, self.my, self.mz)
+
+    def test_initialization(self):
+        assert self.mc.x == self.mx
+        assert self.mc.y == self.my
+        assert self.mc.z == self.mz
+
+    @pytest.mark.xfail
+    def test_norm(self):
+        # Need stacking and erfa override.
+        norm = self.mc.norm()
+        assert norm.nominal == self.c.norm()
