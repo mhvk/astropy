@@ -133,6 +133,9 @@ class NDArrayShapeMethods:
 
         return self._apply('take', indices, axis=axis, mode=mode)
 
+    def repeat(self, repeats, axis=None):
+        return self._apply('repeat', repeats, axis=axis)
+
 
 class ShapedLikeNDArray(NDArrayShapeMethods, metaclass=abc.ABCMeta):
     """Mixin class to provide shape-changing methods.

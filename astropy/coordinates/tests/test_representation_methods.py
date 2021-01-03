@@ -228,6 +228,17 @@ class TestManipulation(ShapeSetup):
         assert np.all(s0_take.lon == self.s0.lon.take((5, 2)))
         assert np.all(s0_diff.d_lon == self.diff.d_lon.take((5, 2)))
 
+    def test_repeat(self, method):
+        if method:
+            s0_repeat = self.s0.repeat(2, axis=0)
+        else:
+            s0_repeat = np.repeat(self.s0, 2, axis=0)
+        s0_diff = s0_repeat.differentials['s']
+        assert s0_repeat.shape == (12, 7)
+        assert s0_diff.shape == s0_repeat.shape
+        assert np.all(s0_repeat.lon == self.s0.lon.repeat(2, axis=0))
+        assert np.all(s0_diff.d_lon == self.diff.d_lon.repeat(2, axis=0))
+
     def test_broadcast_to_via_apply(self):
         s0_broadcast = self.s0._apply(np.broadcast_to, (3, 6, 7), subok=True)
         s0_diff = s0_broadcast.differentials['s']
