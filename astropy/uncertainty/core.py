@@ -276,13 +276,16 @@ class ArrayDistribution(Distribution, np.ndarray):
     def view(self, dtype=None, type=None):
         if type is None:
             if issubclass(dtype, np.ndarray):
-                type = dtype
-                dtype = None
+                if issubclass(dtype, Distribution):
+                    return super().view(dtype)
+                else:
+                    result = self.distribution.view(dtype)
+                    return Distribution(result)
             else:
                 raise ValueError('Cannot set just dtype for a Distribution.')
 
         if issubclass(type, Distribution):
-            return super().view(type)
+            return super().view(dtype, type)
 
         result = self.distribution.view(dtype, type)
         return Distribution(result)
