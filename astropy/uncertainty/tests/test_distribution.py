@@ -413,3 +413,24 @@ def test_distr_angle():
 
     with pytest.raises(u.UnitTypeError):
         ad *= ad
+
+
+def test_distr_angle_view_as_quantity():
+    # Check that Quantity subclasses decay to Quantity appropriately.
+    distr = Distribution([2., 3., 4.])
+    ad = Angle(distr, 'deg')
+    qd = ad.view(u.Quantity)
+    assert not isinstance(qd, Angle)
+    assert isinstance(qd, u.Quantity)
+    assert isinstance(qd, Distribution)
+    # View directly as DistributionQuantity class.
+    qd2 = ad.view(qd.__class__)
+    assert not isinstance(qd2, Angle)
+    assert isinstance(qd2, u.Quantity)
+    assert isinstance(qd2, Distribution)
+    assert_array_equal(qd2.distribution, qd.distribution)
+    qd3 = ad.view(qd.dtype, qd.__class__)
+    assert not isinstance(qd3, Angle)
+    assert isinstance(qd3, u.Quantity)
+    assert isinstance(qd3, Distribution)
+    assert_array_equal(qd3.distribution, qd.distribution)
