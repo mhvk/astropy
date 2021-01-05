@@ -88,6 +88,10 @@ astropy.timeseries
 astropy.uncertainty
 ^^^^^^^^^^^^^^^^^^^
 
+- ``Distribution`` instances can now be used as input to ``Quantity`` to
+  initialize ``QuantityDistribution``.  Hence, ``distribution * unit`` will
+  work too. [#11210]
+
 astropy.units
 ^^^^^^^^^^^^^
 
