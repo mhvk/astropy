@@ -10,9 +10,10 @@ import numpy as np
 
 import astropy.units as u
 from astropy.coordinates.angles import Angle
-from astropy.utils import ShapedLikeNDArray, classproperty
+from astropy.utils import MaskableShapedLikeNDArray, classproperty
 from astropy.utils.data_info import MixinInfo
 from astropy.utils.exceptions import DuplicateRepresentationWarning
+from astropy.utils.masked import Masked
 
 # Module-level dict mapping representation string alias names to classes.
 # This is populated by __init_subclass__ when called by Representation or
@@ -126,7 +127,7 @@ class BaseRepresentationOrDifferentialInfo(MixinInfo):
         return out
 
 
-class BaseRepresentationOrDifferential(ShapedLikeNDArray):
+class BaseRepresentationOrDifferential(MaskableShapedLikeNDArray):
     """3D coordinate representations and differentials.
 
     Parameters
@@ -233,10 +234,20 @@ class BaseRepresentationOrDifferential(ShapedLikeNDArray):
             for attr, bc_attr in zip(attrs, bc_attrs)
         ]
 
+        # Check whether there are any masked data, and combine masks as needed.
+        attrs = self._combine_masks(attrs)
+
         # Set private attributes for the attributes. (If not defined explicitly
         # on the class, the metaclass will define properties to access these.)
         for component, attr in zip(components, attrs):
             setattr(self, "_" + component, attr)
+
+    def _combine_masks(self, attrs):
+        mask = Masked._combine_masks([getattr(a, "mask", None) for a in attrs])
+        if mask is not False:
+            attrs = [Masked(attr, mask=mask) for attr in attrs]
+
+        return attrs
 
     @classmethod
     def get_name(cls):
@@ -425,6 +436,21 @@ class BaseRepresentationOrDifferential(ShapedLikeNDArray):
                     raise
                 else:
                     reshaped.append(val)
+
+    @property
+    def masked(self):
+        return isinstance(getattr(self, self.components[0]), Masked)
+
+    @property
+    def mask(self):
+        mask = getattr(getattr(self, self.components[0]), "mask", None)
+        if mask is None:
+            mask = np.broadcast_to(np.False_, self.shape)
+        else:
+            # Take a view of any existing mask, so we can set it to readonly.
+            mask = mask.view()
+        mask.flags.writeable = False
+        return mask
 
     # Required to support multiplication and division, and defined by the base
     # representation and differential classes.

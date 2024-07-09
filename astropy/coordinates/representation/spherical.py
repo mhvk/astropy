@@ -12,6 +12,7 @@ from astropy.coordinates.distances import Distance
 from astropy.coordinates.matrix_utilities import is_O3
 from astropy.utils import classproperty
 from astropy.utils.compat import COPY_IF_NEEDED
+from astropy.utils.masked import Masked
 
 from .base import BaseDifferential, BaseRepresentation
 from .cartesian import CartesianRepresentation
@@ -413,7 +414,27 @@ def _spherical_op_funcs(op, *args):
     )
 
 
-class SphericalRepresentation(BaseRepresentation):
+class MaybeAngularOnlyMask:
+    def __init__(self, *args, mask_source="all", **kwargs):
+        self._mask_source = mask_source
+        super().__init__(*args, **kwargs)
+
+    def _combine_masks(self, attrs):
+        # Combine just the possible masks of the angular attributes.
+        if self._mask_source == "all" or not hasattr(attrs[2], "mask"):
+            return super()._combine_masks(attrs)
+
+        # Combine angular masks (and use those for the overall mask),
+        # while using the fully combined mask for the radial coordinate.
+        combined = super()._combine_masks(attrs[:2])
+        radial_mask = Masked._combine_masks(
+            [attrs[2].mask, getattr(combined[0], "mask", False)]
+        )
+        combined.append(Masked(attrs[2], radial_mask))
+        return combined
+
+
+class SphericalRepresentation(MaybeAngularOnlyMask, BaseRepresentation):
     """
     Representation of points in 3D spherical coordinates.
 
@@ -449,8 +470,24 @@ class SphericalRepresentation(BaseRepresentation):
     attr_classes = {"lon": Longitude, "lat": Latitude, "distance": u.Quantity}
     _unit_representation = UnitSphericalRepresentation
 
-    def __init__(self, lon, lat=None, distance=None, differentials=None, copy=True):
-        super().__init__(lon, lat, distance, copy=copy, differentials=differentials)
+    def __init__(
+        self,
+        lon,
+        lat=None,
+        distance=None,
+        differentials=None,
+        copy=True,
+        *,
+        mask_source="all",
+    ):
+        super().__init__(
+            lon,
+            lat,
+            distance,
+            copy=copy,
+            differentials=differentials,
+            mask_source=mask_source,
+        )
         if (
             not isinstance(self._distance, Distance)
             and self._distance.unit.physical_type == "length"
