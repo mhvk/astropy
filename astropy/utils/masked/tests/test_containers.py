@@ -57,6 +57,49 @@ class TestRepresentations:
             assert_array_equal(mc.mask, self.mask)
 
 
+class TestSphericalRepresentationSeparateMasks:
+    """Tests for Spherical with separate angular and radial masks."""
+
+    def setup_class(self):
+        self.lon = np.array([0.0, 3.0, 6.0, 12.0, 15.0, 18.0]) << u.hourangle
+        self.lat = np.array([-15.0, 30.0, 60.0, -60.0, 89.0, -80.0]) << u.deg
+        self.dis = np.array([10.0, 20.0, 30.0, 40.0, 50.0, 60.0]) << u.pc
+        self.mask_lon = np.array([False, True, False, False, True, True])
+        self.mask_lat = np.array([False, False, True, False, True, True])
+        self.mask_dis = np.array([False, False, False, True, False, True])
+        self.mlon = Masked(self.lon, self.mask_lon)
+        self.mlat = Masked(self.lat, self.mask_lat)
+        self.mdis = Masked(self.dis, self.mask_dis)
+        self.msph = r.SphericalRepresentation(
+            self.mlon,
+            self.mlat,
+            self.mdis,
+            mask_source="angular",
+        )
+        self.mask_ang = self.mask_lon | self.mask_lat
+        self.mask = self.mask_ang | self.mask_dis
+
+    def test_initialization(self):
+        assert_array_equal(self.msph.lon.mask, self.mask_ang)
+        assert_array_equal(self.msph.lat.mask, self.mask_ang)
+        assert np.may_share_memory(self.msph.lon.mask, self.msph.lat.mask)
+
+        assert_array_equal(self.msph.distance.mask, self.mask)
+        assert_array_equal(self.msph.mask, self.mask_ang)
+
+        assert_array_equal(self.msph.lon.unmasked, self.lon)
+        assert_array_equal(self.msph.lat.unmasked, self.lat)
+        assert_array_equal(self.msph.distance.unmasked, self.dis)
+
+    def test_convert_to_unit_spherical(self):
+        musph = self.msph.represent_as(r.UnitSphericalRepresentation)
+        assert_array_equal(musph.mask, self.mask_ang)
+
+    def test_convert_to_radial(self):
+        mrad = r.RadialRepresentation.from_representation(self.msph)
+        assert_array_equal(mrad.mask, self.mask)
+
+
 class TestSkyCoord:
     def setup_class(self):
         self.ra = np.array([3.0, 5.0, 0.0]) << u.hourangle
