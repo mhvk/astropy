@@ -79,16 +79,18 @@ class BaseInterval(BaseTransform):
         result : ndarray
             The transformed values.
         """
+        values = np.asanyarray(values)
+        if values.dtype.kind not in "fc":
+            values = values.astype(float)
         vmin, vmax = self.get_limits(values)
-
         if out is None:
-            values = np.subtract(values, float(vmin))
+            values = np.subtract(values, vmin)
         else:
-            if out.dtype.kind != "f":
+            if out.dtype.kind not in "fc":
                 raise TypeError(
                     "Can only do in-place scaling for floating-point arrays"
                 )
-            values = np.subtract(values, float(vmin), out=out)
+            values = np.subtract(values, vmin, out=out)
 
         if (vmax - vmin) != 0:
             np.true_divide(values, vmax - vmin, out=values)
@@ -142,7 +144,7 @@ class MinMaxInterval(BaseInterval):
 
     def get_limits(self, values):
         # Make sure values is a Numpy array
-        values = np.asarray(values).ravel()
+        values = np.asanyarray(values).ravel()
 
         # Filter out invalid values (inf, nan)
         values = values[np.isfinite(values)]
@@ -180,7 +182,7 @@ class AsymmetricPercentileInterval(BaseInterval):
 
     def get_limits(self, values):
         # Make sure values is a Numpy array
-        values = np.asarray(values).ravel()
+        values = np.asanyarray(values).ravel()
 
         # If needed, limit the number of samples. We sample with replacement
         # since this is much faster.
@@ -275,7 +277,7 @@ class ZScaleInterval(BaseInterval):
 
     def get_limits(self, values):
         # Sample the image
-        values = np.asarray(values)
+        values = np.asanyarray(values)
         values = values[np.isfinite(values)]
         stride = int(max(1.0, values.size / self.n_samples))
         samples = values[::stride][: self.n_samples]

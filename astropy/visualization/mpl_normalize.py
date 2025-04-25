@@ -161,11 +161,13 @@ class ImageNormalize(Normalize):
             invalid = self.invalid
 
         if isinstance(values, ma.MaskedArray):
+            mask = values.mask
+            # Don't use filled directly - this may be a masked Quantity.
+            values = values.data.copy()
+            values[mask] = self.vmax
             if clip:
+                # Clipping invalidates mask.
                 mask = False
-            else:
-                mask = values.mask
-            values = values.filled(self.vmax)
         else:
             mask = False
 
@@ -173,20 +175,20 @@ class ImageNormalize(Normalize):
         if np.isscalar(values):
             values = np.array([values], dtype=float)
         else:
-            # copy because of in-place operations after
-            values = np.array(values, copy=True, dtype=float)
+            values = np.asanyarray(values, dtype=float)
 
         # Define vmin and vmax if not None
         self._set_limits(values)
 
         if self.vmin == self.vmax:
-            values *= 0.0
+            # Plain array since this step normalizes and thus even quantities
+            # become dimensionless.
+            values = np.zeros(values.shape)
         elif self.vmin > self.vmax:
             raise ValueError("vmin must be less than or equal to vmax")
         else:
-            # Normalize based on vmin and vmax
-            np.subtract(values, self.vmin, out=values)
-            np.true_divide(values, self.vmax - self.vmin, out=values)
+            # Normalize based on vmin and vmax.
+            np.true_divide(values - self.vmin, self.vmax - self.vmin, out=values)
 
             # Clip to the 0 to 1 range
             if clip:

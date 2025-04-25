@@ -46,9 +46,9 @@ def _prepare(values, clip=True, out=None):
         return np.clip(values, 0.0, 1.0, out=out)
     else:
         if out is None:
-            return np.array(values, copy=True)
+            return np.asanyarray(values, copy=True)
         else:
-            out[:] = np.asarray(values)
+            np.copyto(out, np.asanyarray(values))
             return out
 
 
