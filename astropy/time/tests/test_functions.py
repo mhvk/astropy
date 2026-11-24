@@ -10,7 +10,16 @@ class TestFunctionsTime:
     def setup_class(cls):
         cls.t = Time(50000, np.arange(8).reshape(4, 2), format="mjd", scale="tai")
 
-    def check(self, func, cls=None, scale=None, format=None, *args, **kwargs):
+    def check(
+        self,
+        func,
+        *args,
+        cls=None,
+        object_array=None,
+        scale=None,
+        format=None,
+        **kwargs,
+    ):
         if cls is None:
             cls = self.t.__class__
         if scale is None:
@@ -20,15 +29,21 @@ class TestFunctionsTime:
         out = func(self.t, *args, **kwargs)
         jd1 = func(self.t.jd1, *args, **kwargs)
         jd2 = func(self.t.jd2, *args, **kwargs)
-        expected = cls(jd1, jd2, format=format, scale=scale)
-        if isinstance(out, np.ndarray):
+        expected = cls(jd1, jd2, format="jd", scale=scale)
+        expected.format = format
+        if object_array or (object_array is None and isinstance(out, np.ndarray)):
             expected = np.array(expected)
-
+        assert type(out) is type(expected)
         assert np.all(out == expected)
 
     @pytest.mark.parametrize("axis", (0, 1))
     def test_diff(self, axis):
         self.check(np.diff, axis=axis, cls=TimeDelta, format="jd")
+
+    @pytest.mark.parametrize("axis", (0, 1))
+    def test_take_along_axis(self, axis):
+        indices = np.argsort(self.t[::-1], axis=axis)
+        self.check(np.take_along_axis, indices, axis, object_array=False)
 
 
 class TestFunctionsTimeDelta(TestFunctionsTime):

@@ -308,6 +308,7 @@ class ShapedLikeNDArray(NDArrayShapeMethods, metaclass=abc.ABCMeta):
     _APPLICABLE_FUNCTIONS = {
         np.moveaxis,
         np.rollaxis,
+        np.take_along_axis,
         np.atleast_1d,
         np.atleast_2d,
         np.atleast_3d,
